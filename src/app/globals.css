@@ -1,0 +1,43 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f5f4f0;
+  --surface:  #fdfcf8;
+  --surface2: #f0ede6;
+  --border:   #ddd9ce;
+  --border2:  #c8c2b4;
+
+  --ink:      #1a1814;
+  --ink2:     #5c574e;
+  --ink3:     #9c9488;
+
+  --spec:     #1a5cff;   /* 仕様・MDN アクセント */
+  --spec-bg:  #eef2ff;
+  --a11y:     #0e7c4a;   /* アクセシビリティ・WCAG */
+  --a11y-bg:  #edfaf3;
+  --aria:     #7c3aed;   /* WAI-ARIA */
+  --aria-bg:  #f4f0ff;
+  --custom:   #c2410c;   /* カスタム */
+  --custom-bg:#fff4ed;
+
+  --designer: #d97706;   /* デザイナーロール */
+  --engineer: #2563eb;   /* エンジニアロール */
+
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+
+  --radius: 6px;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }

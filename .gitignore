@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+
+# env — APIキーは絶対にコミットしない
+.env
+.env.local
+.env.*.local
+
+# クロール生成物 — Upstash投入済みなのでリポジトリ不要
+docs/
+
+# ビルド成果物
+.scripts-dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+npm-debug.log*
+*.log

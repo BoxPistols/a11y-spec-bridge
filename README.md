@@ -1,0 +1,80 @@
+# SpecBridge
+
+> 仕様を根拠に、判断できる
+
+WCAG 2.2 / WAI-ARIA / MDN の仕様に基づいてデザインとエンジニアリングの判断を支援する RAG ツール。
+
+## コンセプト
+
+デザイナーが「ブラウザの実態を知らないままワイヤーを作る」課題を解消する。
+仕様書を根拠に「なぜこう設計するか」を説明できるようにする。
+
+## スタック
+
+| 役割 | 技術 |
+|------|------|
+| フロント | Next.js 15 App Router |
+| Embedding | OpenAI text-embedding-3-small |
+| VectorDB | Upstash Vector（永続化） |
+| LLM | gpt-5.4-nano / gpt-5.4-mini / gemini-2.5-flash |
+| デプロイ | Vercel |
+
+## セットアップ
+
+```bash
+npm install
+cp .env.local.example .env.local
+# .env.local に APIキーを記入
+```
+
+## ナレッジベース構築（初回のみ）
+
+```bash
+# Step 1: MDN / WCAG / WAI-ARIA をクロールして docs/*.jsonl に保存
+npm run crawl
+
+# Step 2: Upstash Vector に埋め込み（約10〜20分）
+npm run seed
+
+# または一括実行
+npm run crawl:seed
+```
+
+## 開発サーバー起動
+
+```bash
+npm run dev
+# → http://localhost:3000
+```
+
+## Vercel デプロイ
+
+```bash
+npx vercel
+```
+
+環境変数（Vercel ダッシュボード）:
+- `OPENAI_API_KEY`
+- `GOOGLE_API_KEY`
+- `UPSTASH_VECTOR_REST_URL`
+- `UPSTASH_VECTOR_REST_TOKEN`
+
+## ドキュメント構成（2層）
+
+```
+Layer 1 — 事前埋め込み済み（npm run crawl:seed で構築）
+  MDN Web Docs    : HTML要素・ARIA属性・CSS・フォーカス
+  WCAG 2.2        : 達成基準ごとの Understanding ドキュメント
+  WAI-ARIA APG    : UIパターンごとのキーボード・ARIA要件
+
+Layer 2 — ユーザーが追加（UIからPDF/TXT/MD投入）
+  自社デザインシステムガイドライン
+  コンポーネント使い分けルール など
+```
+
+## ロール別回答の違い
+
+| ロール | 回答スタイル |
+|--------|-------------|
+| Designer | デザイン判断への影響・仕様をデザイン要件として表現 |
+| Engineer | 実装詳細・ARIAコード例・ブラウザ互換性 |
