@@ -9,6 +9,7 @@ import type { SearchResult } from "./rag";
 
 export type ModelId = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
 export type UserRole = "designer" | "engineer";
+export type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export type LLMResponse = {
   answer: string;
@@ -22,7 +23,8 @@ function buildSystem(role: UserRole): string {
   const base = `あなたは Web アクセシビリティ・HTML仕様・デザインシステムの専門家です。
 提供されたコンテキスト（MDN / WCAG / WAI-ARIA の仕様）に基づいて回答してください。
 コンテキストに情報がない場合は「参照できる仕様に該当情報がありません」と答えてください。
-仕様の根拠を示す際は「WCAG 2.2 達成基準 X.X.X」のように具体的に引用してください。`;
+仕様の根拠を示す際は「WCAG 2.2 達成基準 X.X.X」のように具体的に引用してください。
+ユーザーが前の回答について追加質問した場合は、会話の文脈を踏まえて回答してください。`;
 
   if (role === "designer") {
     return `${base}
@@ -57,19 +59,27 @@ async function callOpenAI(
   model: "gpt-5.4-nano" | "gpt-5.4-mini",
   role: UserRole,
   context: string,
-  question: string
+  question: string,
+  history?: ChatMessage[]
 ): Promise<LLMResponse> {
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: buildSystem(role) },
+  ];
+  // 会話履歴（最新の質問を除く過去分）
+  if (history && history.length > 1) {
+    for (const m of history.slice(0, -1)) {
+      messages.push({ role: m.role, content: m.content });
+    }
+  }
+  messages.push({
+    role: "user",
+    content: `コンテキスト:\n${context}\n\n質問: ${question}`,
+  });
   const res = await client.chat.completions.create({
     model,
     temperature: 0,
-    messages: [
-      { role: "system", content: buildSystem(role) },
-      {
-        role: "user",
-        content: `コンテキスト:\n${context}\n\n質問: ${question}`,
-      },
-    ],
+    messages,
   });
   return {
     answer: res.choices[0].message.content ?? "",
@@ -83,14 +93,24 @@ async function callOpenAI(
 async function callGemini(
   role: UserRole,
   context: string,
-  question: string
+  question: string,
+  history?: ChatMessage[]
 ): Promise<LLMResponse> {
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? "");
   const m = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-preview-04-17",
+    model: "gemini-2.5-flash",
     systemInstruction: buildSystem(role),
   });
-  const result = await m.generateContent(
+  // 会話履歴付きチャット
+  const chat = m.startChat({
+    history: (history && history.length > 1)
+      ? history.slice(0, -1).map(msg => ({
+          role: msg.role === "assistant" ? "model" as const : "user" as const,
+          parts: [{ text: msg.content }],
+        }))
+      : [],
+  });
+  const result = await chat.sendMessage(
     `コンテキスト:\n${context}\n\n質問: ${question}`
   );
   return {
@@ -106,15 +126,16 @@ export async function generate(
   modelId: ModelId,
   role: UserRole,
   results: SearchResult[],
-  question: string
+  question: string,
+  history?: ChatMessage[]
 ): Promise<LLMResponse> {
   const context = buildContext(results);
   switch (modelId) {
     case "gpt-5.4-nano":
     case "gpt-5.4-mini":
-      return callOpenAI(modelId, role, context, question);
+      return callOpenAI(modelId, role, context, question, history);
     case "gemini-2.5-flash":
-      return callGemini(role, context, question);
+      return callGemini(role, context, question, history);
     default:
       throw new Error(`Unknown model: ${modelId}`);
   }

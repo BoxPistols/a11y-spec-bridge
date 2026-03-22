@@ -6,12 +6,13 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { question, model, role = "designer", k = 6, filterSource } = await req.json() as {
+    const { question, model, role = "designer", k = 6, filterSource, history } = await req.json() as {
       question: string;
       model: ModelId;
       role?: UserRole;
       k?: number;
       filterSource?: Source;
+      history?: { role: "user" | "assistant"; content: string }[];
     };
 
     if (!question) return NextResponse.json({ error: "question required" }, { status: 400 });
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const llmRes = await generate(model, role, results, question);
+    const llmRes = await generate(model, role, results, question, history);
 
     return NextResponse.json({
       answer: llmRes.answer,

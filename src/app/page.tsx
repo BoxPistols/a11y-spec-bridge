@@ -34,9 +34,9 @@ type Message = {
 
 // ── 定数 ─────────────────────────────────────────────
 const MODELS: { id: ModelId; label: string; provider: "openai" | "google" }[] = [
+  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google" },
   { id: "gpt-5.4-mini",     label: "GPT-5.4 mini",    provider: "openai"  },
   { id: "gpt-5.4-nano",     label: "GPT-5.4 nano",    provider: "openai"  },
-  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google" },
 ];
 
 const SUGGEST: Record<UserRole, string[]> = {
@@ -65,10 +65,48 @@ const SOURCE_META: Record<SourceTag, { label: string; color: string; bg: string 
   CUSTOM:    { label: "カスタム",  color: "var(--custom)", bg: "var(--custom-bg)" },
 };
 
+// ── チャット履歴管理 ─────────────────────────────────
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+  role: UserRole;
+  createdAt: string;
+};
+
+const STORAGE_KEY = "specbridge-sessions";
+const PREFS_KEY = "specbridge-prefs";
+
+function loadSessions(): ChatSession[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+  } catch { return []; }
+}
+
+function saveSessions(sessions: ChatSession[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+}
+
+function loadPrefs(): { role: UserRole; model: ModelId } {
+  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.4-mini" };
+  try {
+    const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}");
+    return {
+      role: (["designer", "engineer"] as UserRole[]).includes(p.role) ? p.role : "designer",
+      model: MODELS.some(m => m.id === p.model) ? p.model : "gemini-2.5-flash",
+    };
+  } catch { return { role: "designer", model: "gpt-5.4-mini" }; }
+}
+
+function savePrefs(role: UserRole, model: ModelId) {
+  localStorage.setItem(PREFS_KEY, JSON.stringify({ role, model }));
+}
+
 // ── コンポーネント ────────────────────────────────────
 export default function Page() {
   const [role,       setRole]       = useState<UserRole>("designer");
-  const [model,      setModel]      = useState<ModelId>("gpt-5.4-mini");
+  const [model,      setModel]      = useState<ModelId>("gemini-2.5-flash");
   const [messages,   setMessages]   = useState<Message[]>([]);
   const [input,      setInput]      = useState("");
   const [loading,    setLoading]    = useState(false);
@@ -76,14 +114,47 @@ export default function Page() {
   const [vectorCount,setVectorCount]= useState<number | null>(null);
   const [dragOver,   setDragOver]   = useState(false);
   const [customDocs, setCustomDocs] = useState<string[]>([]);
+  const [hasOpenAI,  setHasOpenAI]  = useState(false);
+  const [sessions,   setSessions]   = useState<ChatSession[]>([]);
+  const [currentId,  setCurrentId]  = useState<string | null>(null);
   const fileRef   = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // 設定・セッション読み込み
+  useEffect(() => {
+    setSessions(loadSessions());
+    const prefs = loadPrefs();
+    setRole(prefs.role);
+    setModel(prefs.model);
+  }, []);
+
+  // 設定変更時に保存
+  useEffect(() => { savePrefs(role, model); }, [role, model]);
+
+  // メッセージ変更時に自動保存
+  useEffect(() => {
+    if (messages.length === 0) return;
+    setSessions(prev => {
+      const id = currentId ?? Date.now().toString();
+      if (!currentId) setCurrentId(id);
+      const firstUserMsg = messages.find(m => m.role === "user");
+      const title = firstUserMsg?.content.slice(0, 40) ?? "新しい会話";
+      const updated = prev.filter(s => s.id !== id);
+      updated.unshift({ id, title, messages, role, createdAt: new Date().toISOString() });
+      const capped = updated.slice(0, 30);
+      saveSessions(capped);
+      return capped;
+    });
+  }, [messages, currentId, role]);
 
   // ステータス取得
   useEffect(() => {
     fetch("/api/status")
       .then(r => r.json())
-      .then(d => setVectorCount(d.vectorCount ?? 0))
+      .then(d => {
+        setVectorCount(d.vectorCount ?? 0);
+        setHasOpenAI(!!d.hasOpenAI);
+      })
       .catch(() => {});
   }, []);
 
@@ -91,14 +162,21 @@ export default function Page() {
   async function handleSubmit(q?: string) {
     const question = (q ?? input).trim();
     if (!question || loading) return;
-    setMessages(prev => [...prev, { id: Date.now().toString(), role: "user", content: question, userRole: role }]);
+    const newMsg: Message = { id: Date.now().toString(), role: "user", content: question, userRole: role };
+    const updatedMessages = [...messages, newMsg];
+    setMessages(updatedMessages);
     setInput("");
     setLoading(true);
+    // 直近の会話履歴（最大10件）をAPIに送信
+    const history = updatedMessages
+      .filter(m => !m.error)
+      .slice(-10)
+      .map(m => ({ role: m.role, content: m.content }));
     try {
       const res  = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, model, role, k: 6 }),
+        body: JSON.stringify({ question, model, role, k: 6, history }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -171,6 +249,15 @@ export default function Page() {
             <div className={styles.brandName}>SpecBridge</div>
             <div className={styles.brandSub}>Design × Spec Q&A</div>
           </div>
+          {messages.length > 0 && (
+            <button
+              className={styles.newChatBtn}
+              onClick={() => { setCurrentId(null); setMessages([]); }}
+              title="新しい会話"
+            >
+              +
+            </button>
+          )}
         </div>
 
         {/* ロール選択 */}
@@ -206,16 +293,21 @@ export default function Page() {
         <div className={styles.sideSection}>
           <div className={styles.sideLabel}>モデル</div>
           <div className={styles.modelList}>
-            {MODELS.map(m => (
-              <button
-                key={m.id}
-                className={`${styles.modelBtn} ${model === m.id ? styles.modelActive : ""}`}
-                onClick={() => setModel(m.id)}
-              >
-                <span className={`${styles.providerPip} ${styles[m.provider]}`} />
-                {m.label}
-              </button>
-            ))}
+            {MODELS.map(m => {
+              const disabled = m.provider === "openai" && !hasOpenAI;
+              return (
+                <button
+                  key={m.id}
+                  className={`${styles.modelBtn} ${model === m.id ? styles.modelActive : ""} ${disabled ? styles.modelDisabled : ""}`}
+                  onClick={() => !disabled && setModel(m.id)}
+                  disabled={disabled}
+                  title={disabled ? "OPENAI_API_KEY が未設定です" : undefined}
+                >
+                  <span className={`${styles.providerPip} ${styles[m.provider]}`} />
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -260,6 +352,45 @@ export default function Page() {
             onChange={e => { const f = e.target.files?.[0]; if (f) ingestFile(f); }}
           />
         </div>
+
+        {/* 履歴 */}
+        {sessions.length > 0 && (
+          <div className={styles.sideSection}>
+            <div className={styles.sideLabel}>履歴</div>
+            <div className={styles.historyList}>
+              {sessions.map(s => (
+                <div
+                  key={s.id}
+                  className={`${styles.historyItem} ${s.id === currentId ? styles.historyActive : ""}`}
+                  onClick={() => {
+                    setCurrentId(s.id);
+                    setMessages(s.messages);
+                    setRole(s.role);
+                  }}
+                >
+                  <span className={styles.historyTitle}>{s.title}</span>
+                  <button
+                    className={styles.historyDelete}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSessions(prev => {
+                        const next = prev.filter(x => x.id !== s.id);
+                        saveSessions(next);
+                        return next;
+                      });
+                      if (s.id === currentId) {
+                        setCurrentId(null);
+                        setMessages([]);
+                      }
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ベクトル数 */}
         <div className={styles.sideFooter}>
@@ -323,7 +454,9 @@ export default function Page() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+                if (e.key === "Enter" && !e.nativeEvent.isComposing && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault(); handleSubmit();
+                }
               }}
               rows={2}
             />
@@ -331,7 +464,7 @@ export default function Page() {
               →
             </button>
           </div>
-          <div className={styles.inputHint}>Enter で送信 · Shift+Enter で改行 · 出典は仕様書へリンク</div>
+          <div className={styles.inputHint}>⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク</div>
         </div>
       </main>
     </div>

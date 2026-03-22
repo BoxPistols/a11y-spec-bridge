@@ -47,10 +47,29 @@
 }
 .brandSub {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   color: var(--ink3);
   letter-spacing: .1em;
   margin-top: 1px;
+}
+.newChatBtn {
+  margin-left: auto;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 16px;
+  color: var(--ink2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all .15s;
+  line-height: 1;
+}
+.newChatBtn:hover {
+  background: var(--bg);
+  border-color: var(--border2);
+  color: var(--ink);
 }
 
 /* セクション */
@@ -60,7 +79,7 @@
 }
 .sideLabel {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   color: var(--ink3);
   letter-spacing: .15em;
   text-transform: uppercase;
@@ -84,7 +103,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
   cursor: pointer;
   transition: all .15s;
@@ -101,7 +120,7 @@
   color: var(--engineer);
 }
 .roleDesc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink3);
   line-height: 1.5;
 }
@@ -117,13 +136,17 @@
   border: 1px solid transparent;
   border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
   cursor: pointer;
   transition: all .15s;
   text-align: left;
 }
-.modelBtn:hover { background: var(--surface2); border-color: var(--border); }
+.modelBtn:hover:not(:disabled) { background: var(--surface2); border-color: var(--border); }
+.modelDisabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
 .modelActive {
   background: var(--surface2);
   border-color: var(--border2);
@@ -144,7 +167,7 @@
   align-items: center;
   gap: 7px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink2);
 }
 .sourcePip {
@@ -155,7 +178,7 @@
 }
 .sourceSeedBadge {
   margin-left: auto;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--ink3);
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -180,7 +203,7 @@
   border: 1px dashed var(--border2);
   border-radius: var(--radius);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink3);
   transition: all .2s;
   min-height: 72px;
@@ -190,7 +213,60 @@
   color: var(--spec);
   background: var(--spec-bg);
 }
-.dropHint { font-size: 9px; color: var(--ink3); }
+.dropHint { font-size: 12px; color: var(--ink3); }
+
+/* 履歴 */
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .15s;
+}
+.historyItem:hover {
+  background: var(--surface2);
+}
+.historyActive {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+.historyTitle {
+  font-size: 12px;
+  color: var(--ink2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.historyDelete {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  font-size: 14px;
+  color: var(--ink3);
+  cursor: pointer;
+  opacity: 0;
+  transition: all .15s;
+}
+.historyItem:hover .historyDelete {
+  opacity: 1;
+}
+.historyDelete:hover {
+  background: var(--bg);
+  color: #b91c1c;
+}
 
 /* フッター */
 .sideFooter {
@@ -202,7 +278,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink3);
 }
 .vectorDot {
@@ -252,7 +328,7 @@
 .suggests { text-align: left; }
 .suggestLabel {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink3);
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -294,7 +370,7 @@
 }
 .userTag {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   padding: 3px 6px;
   border-radius: 3px;
@@ -327,14 +403,14 @@
 }
 .aiModel {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   color: var(--ink3);
   letter-spacing: .1em;
   text-transform: uppercase;
 }
 .aiTokens {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   color: var(--ink3);
 }
 .aiText {
@@ -422,13 +498,13 @@
   background: var(--surface2);
   border: none;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink2);
   cursor: pointer;
   letter-spacing: .06em;
 }
 .sourcesToggle:hover { color: var(--ink); }
-.chevron { font-size: 8px; }
+.chevron { font-size: 12px; }
 .sourceCards {
   padding: 10px;
   display: flex;
@@ -451,14 +527,14 @@
 }
 .sourceTag {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   padding: 2px 6px;
   border-radius: 2px;
   letter-spacing: .06em;
 }
 .sourceSection {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -467,12 +543,12 @@
 }
 .sourceScore {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink3);
   margin-left: auto;
 }
 .sourceSnippet {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink2);
   line-height: 1.65;
   margin-bottom: 6px;
@@ -483,7 +559,7 @@
 }
 .sourceLink {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--spec);
   text-decoration: none;
   letter-spacing: .04em;
@@ -524,7 +600,7 @@
 }
 .rolePill {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   padding: 4px 8px;
   border-radius: 3px;
@@ -570,7 +646,7 @@
 
 .inputHint {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   color: var(--ink3);
   margin-top: 7px;
   letter-spacing: .05em;

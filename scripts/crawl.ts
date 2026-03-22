@@ -145,9 +145,11 @@ function fetchHtml(url: string): Promise<string> {
         },
       },
       (res) => {
-        // リダイレクト追跡（1段階）
+        // リダイレクト追跡（相対パス対応）
         if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          fetchHtml(res.headers.location).then(resolve).catch(reject);
+          const loc = res.headers.location;
+          const next = loc.startsWith("http") ? loc : new URL(loc, url).href;
+          fetchHtml(next).then(resolve).catch(reject);
           return;
         }
         const chunks: Buffer[] = [];
