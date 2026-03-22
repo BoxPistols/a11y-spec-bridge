@@ -3,6 +3,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import styles from "./page.module.css";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 // ── 型定義 ────────────────────────────────────────────
 type ModelId    = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
 type UserRole   = "designer" | "engineer";
@@ -357,7 +360,9 @@ function MessageBubble({ msg }: { msg: Message }) {
               </span>
             )}
           </div>
-          <div className={styles.aiText}>{msg.content}</div>
+          <div className={styles.aiText}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+          </div>
           {msg.sources && msg.sources.length > 0 && (
             <div className={styles.sourcesWrap}>
               <button className={styles.sourcesToggle} onClick={() => setOpen(o => !o)}>

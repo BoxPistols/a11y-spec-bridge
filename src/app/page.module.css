@@ -341,8 +341,69 @@
   font-size: 13.5px;
   line-height: 1.85;
   color: var(--ink);
-  white-space: pre-wrap;
   word-break: break-word;
+}
+.aiText h1, .aiText h2, .aiText h3 {
+  margin: 1.5em 0 .5em;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.aiText h1 { font-size: 1.4em; border-bottom: 1px solid var(--border2); padding-bottom: .3em; }
+.aiText h2 { font-size: 1.25em; }
+.aiText h3 { font-size: 1.1em; }
+.aiText p { margin: 1em 0; }
+.aiText ul, .aiText ol { margin: 1em 0; padding-left: 1.5em; }
+.aiText li { margin: .4em 0; }
+.aiText code {
+  font-family: var(--mono);
+  font-size: .9em;
+  background: var(--surface2);
+  padding: .2em .4em;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.aiText pre {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.aiText pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: .85em;
+  line-height: 1.6;
+}
+.aiText blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 3px solid var(--border2);
+  color: var(--ink2);
+  font-style: italic;
+}
+.aiText hr {
+  margin: 2em 0;
+  border: 0;
+  border-top: 1px solid var(--border2);
+}
+.aiText table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5em 0;
+}
+.aiText th, .aiText td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+.aiText th {
+  background: var(--surface2);
+  font-weight: 600;
+  font-size: .9em;
 }
 
 /* ソース */

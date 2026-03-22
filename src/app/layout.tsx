@@ -4,6 +4,42 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "SpecBridge — Design × Spec Q&A",
   description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
+  metadataBase: new URL("https://specbridge.vercel.app"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "SpecBridge — Design × Spec Q&A",
+    description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
+    url: "https://specbridge.vercel.app",
+    siteName: "SpecBridge",
+    locale: "ja_JP",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "SpecBridge — Design × Spec Q&A",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SpecBridge — Design × Spec Q&A",
+    description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
+    images: ["/og-image.png"],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png" },
+    ],
+  },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

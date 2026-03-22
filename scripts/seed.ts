@@ -13,7 +13,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as readline from "readline";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { Index } from "@upstash/vector";
 import * as dotenv from "dotenv";
 
@@ -21,7 +21,7 @@ import * as dotenv from "dotenv";
 dotenv.config({ path: path.join(process.cwd(), ".env.local") });
 
 // ── 設定 ─────────────────────────────────────────────
-const BATCH_EMBED = 20;    // Gemini Embedding バッチサイズ（レート制限対策）
+const BATCH_EMBED = 100;   // OpenAI Embedding バッチサイズ
 const BATCH_UPSERT = 100;  // Upstash upsert バッチサイズ
 const CHUNK_SIZE = 800;    // 1チャンク最大文字数（セクションをさらに分割）
 const CHUNK_OVERLAP = 80;
@@ -92,7 +92,7 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 // ── メイン ────────────────────────────────────────────
 async function main() {
   // 環境変数チェック
-  const missing = ["GOOGLE_API_KEY", "UPSTASH_VECTOR_REST_URL", "UPSTASH_VECTOR_REST_TOKEN"]
+  const missing = ["OPENAI_API_KEY", "UPSTASH_VECTOR_REST_URL", "UPSTASH_VECTOR_REST_TOKEN"]
     .filter(k => !process.env[k]);
   if (missing.length) {
     console.error(`❌ 未設定の環境変数: ${missing.join(", ")}`);
@@ -100,8 +100,7 @@ async function main() {
     process.exit(1);
   }
 
-  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
-  const embModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const index = new Index({
     url: process.env.UPSTASH_VECTOR_REST_URL!,
     token: process.env.UPSTASH_VECTOR_REST_TOKEN!,
@@ -136,35 +135,17 @@ async function main() {
     const batch = embedBatches[bi];
     process.stdout.write(`  batch ${bi + 1}/${embedBatches.length} ... `);
 
-    // リトライ付き Embedding（429 レート制限対策）
-    let embRes: Awaited<ReturnType<typeof embModel.batchEmbedContents>> | null = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        embRes = await embModel.batchEmbedContents({
-          requests: batch.map(c => ({
-            content: { role: "user" as const, parts: [{ text: c.text }] },
-            outputDimensionality: 768,
-          })),
-        });
-        break;
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes("429") && attempt < 2) {
-          process.stdout.write(`⏳ (rate limit, waiting 60s) ... `);
-          await sleep(60000);
-        } else {
-          throw e;
-        }
-      }
-    }
-
     try {
-      if (!embRes) throw new Error("embedding failed after retries");
+      // Embedding（OpenAI text-embedding-3-small）
+      const embRes = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: batch.map(c => c.text),
+      });
 
       // VectorRecord 作成
       const records: VectorRecord[] = batch.map((chunk, i) => ({
         id: chunk.id,
-        vector: embRes!.embeddings[i].values,
+        vector: embRes.data[i].embedding,
         metadata: {
           source: chunk.entry.source,
           title: chunk.entry.title,
@@ -186,7 +167,7 @@ async function main() {
       console.log(`✗ ${msg}`);
       errors += batch.length;
     }
-    await sleep(1500);
+    await sleep(200);
   }
 
   // 結果確認

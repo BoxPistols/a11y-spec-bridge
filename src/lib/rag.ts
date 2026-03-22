@@ -4,7 +4,7 @@
  * メタデータに source / title / section / url を持つ
  */
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { Index } from "@upstash/vector";
 
 export type Source = "MDN" | "WCAG" | "WAI-ARIA" | "CUSTOM";
@@ -25,12 +25,12 @@ export type StoreStats = {
 };
 
 // ── シングルトン ──────────────────────────────────────
-let _genAI: GoogleGenerativeAI | null = null;
+let _openai: OpenAI | null = null;
 let _index: Index | null = null;
 
-function getGenAI() {
-  if (!_genAI) _genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? "");
-  return _genAI;
+function getOpenAI() {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _openai;
 }
 
 function getIndex() {
@@ -43,16 +43,13 @@ function getIndex() {
   return _index;
 }
 
-// ── Embedding（gemini-embedding-001 / 768次元） ───────
+// ── Embedding（OpenAI text-embedding-3-small / 1536次元）
 export async function embed(texts: string[]): Promise<number[][]> {
-  const model = getGenAI().getGenerativeModel({ model: "gemini-embedding-001" });
-  const res = await model.batchEmbedContents({
-    requests: texts.map(t => ({
-      content: { role: "user", parts: [{ text: t }] },
-      outputDimensionality: 768,
-    })),
+  const res = await getOpenAI().embeddings.create({
+    model: "text-embedding-3-small",
+    input: texts,
   });
-  return res.embeddings.map(e => e.values);
+  return res.data.map(d => d.embedding);
 }
 
 // ── 類似検索 ─────────────────────────────────────────
