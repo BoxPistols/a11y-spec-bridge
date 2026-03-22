@@ -103,6 +103,32 @@ function savePrefs(role: UserRole, model: ModelId) {
   localStorage.setItem(PREFS_KEY, JSON.stringify({ role, model }));
 }
 
+// ── エクスポート / インポート ─────────────────────────
+function exportToFile(data: object, filename: string) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildExportPayload(sessions: ChatSession[]) {
+  return { app: "specbridge", version: 1, exportedAt: new Date().toISOString(), sessions };
+}
+
+function validateImport(data: unknown): ChatSession[] | null {
+  if (!data || typeof data !== "object") return null;
+  const d = data as Record<string, unknown>;
+  if (d.app !== "specbridge" || !Array.isArray(d.sessions)) return null;
+  // 各セッションの最低限の構造チェック
+  for (const s of d.sessions) {
+    if (!s.id || !Array.isArray(s.messages)) return null;
+  }
+  return d.sessions as ChatSession[];
+}
+
 // ── コンポーネント ────────────────────────────────────
 export default function Page() {
   const [role,       setRole]       = useState<UserRole>("designer");
@@ -117,8 +143,9 @@ export default function Page() {
   const [hasOpenAI,  setHasOpenAI]  = useState(false);
   const [sessions,   setSessions]   = useState<ChatSession[]>([]);
   const [currentId,  setCurrentId]  = useState<string | null>(null);
-  const fileRef   = useRef<HTMLInputElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef     = useRef<HTMLInputElement>(null);
+  const importRef   = useRef<HTMLInputElement>(null);
+  const bottomRef   = useRef<HTMLDivElement>(null);
 
   // 設定・セッション読み込み
   useEffect(() => {
@@ -354,9 +381,70 @@ export default function Page() {
         </div>
 
         {/* 履歴 */}
-        {sessions.length > 0 && (
-          <div className={styles.sideSection}>
+        <div className={styles.sideSection}>
+          <div className={styles.historyHeader}>
             <div className={styles.sideLabel}>履歴</div>
+            <div className={styles.historyActions}>
+              <button
+                className={styles.historyActionBtn}
+                onClick={() => importRef.current?.click()}
+                title="インポート"
+              >
+                ↓
+              </button>
+              {sessions.length > 0 && (
+                <button
+                  className={styles.historyActionBtn}
+                  onClick={() => exportToFile(buildExportPayload(sessions), `specbridge-${new Date().toISOString().slice(0, 10)}.json`)}
+                  title="全てエクスポート"
+                >
+                  ↑
+                </button>
+              )}
+            </div>
+          </div>
+          <input
+            ref={importRef}
+            type="file"
+            accept=".json"
+            style={{ display: "none" }}
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                try {
+                  const parsed = JSON.parse(reader.result as string);
+                  const imported = validateImport(parsed);
+                  if (!imported) {
+                    alert("無効なファイル形式です。SpecBridge のエクスポートファイルを選択してください。");
+                    return;
+                  }
+                  setSessions(prev => {
+                    const ids = new Set(prev.map(s => s.id));
+                    const merged = [...prev];
+                    let added = 0;
+                    for (const s of imported) {
+                      if (!ids.has(s.id)) {
+                        merged.push(s);
+                        added++;
+                      }
+                    }
+                    merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                    const capped = merged.slice(0, 100);
+                    saveSessions(capped);
+                    alert(`${imported.length} 件中 ${added} 件の新規セッションをインポートしました。`);
+                    return capped;
+                  });
+                } catch {
+                  alert("JSONの読み込みに失敗しました。");
+                }
+                e.target.value = "";
+              };
+              reader.readAsText(f);
+            }}
+          />
+          {sessions.length > 0 ? (
             <div className={styles.historyList}>
               {sessions.map(s => (
                 <div
@@ -369,6 +457,16 @@ export default function Page() {
                   }}
                 >
                   <span className={styles.historyTitle}>{s.title}</span>
+                  <button
+                    className={styles.historyExport}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      exportToFile(buildExportPayload([s]), `specbridge-${s.title.slice(0, 20)}.json`);
+                    }}
+                    title="この会話をエクスポート"
+                  >
+                    ↑
+                  </button>
                   <button
                     className={styles.historyDelete}
                     onClick={(e) => {
@@ -389,8 +487,10 @@ export default function Page() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className={styles.historyEmpty}>履歴はまだありません</div>
+          )}
+        </div>
 
         {/* ベクトル数 */}
         <div className={styles.sideFooter}>

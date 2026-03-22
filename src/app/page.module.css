@@ -215,6 +215,42 @@
 }
 .dropHint { font-size: 12px; color: var(--ink3); }
 
+/* 履歴ヘッダー */
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+.historyHeader .sideLabel {
+  margin-bottom: 0;
+}
+.historyActions {
+  display: flex;
+  gap: 4px;
+}
+.historyActionBtn {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--ink3);
+  cursor: pointer;
+  transition: all .15s;
+}
+.historyActionBtn:hover {
+  background: var(--bg);
+  border-color: var(--border2);
+  color: var(--ink);
+}
+.historyEmpty {
+  font-size: 12px;
+  color: var(--ink3);
+  padding: 8px 0;
+}
+
 /* 履歴 */
 .historyList {
   display: flex;
@@ -247,6 +283,7 @@
   white-space: nowrap;
   flex: 1;
 }
+.historyExport,
 .historyDelete {
   flex-shrink: 0;
   width: 20px; height: 20px;
@@ -254,14 +291,20 @@
   background: none;
   border: none;
   border-radius: 3px;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--ink3);
   cursor: pointer;
   opacity: 0;
   transition: all .15s;
 }
+.historyDelete { font-size: 14px; }
+.historyItem:hover .historyExport,
 .historyItem:hover .historyDelete {
   opacity: 1;
+}
+.historyExport:hover {
+  background: var(--bg);
+  color: var(--spec);
 }
 .historyDelete:hover {
   background: var(--bg);

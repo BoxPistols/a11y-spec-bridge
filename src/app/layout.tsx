@@ -4,14 +4,14 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "SpecBridge — Design × Spec Q&A",
   description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
-  metadataBase: new URL("https://specbridge.vercel.app"),
+  metadataBase: new URL("https://a11y-spec-bridge.vercel.app"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
     title: "SpecBridge — Design × Spec Q&A",
     description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
-    url: "https://specbridge.vercel.app",
+    url: "https://a11y-spec-bridge.vercel.app",
     siteName: "SpecBridge",
     locale: "ja_JP",
     type: "website",
