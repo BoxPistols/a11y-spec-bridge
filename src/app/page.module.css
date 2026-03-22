@@ -110,12 +110,12 @@
 }
 .roleIcon { font-size: 12px; }
 .roleBtnActive[data-role="designer"] {
-  background: #fefce8;
+  background: var(--designer-bg);
   border-color: var(--designer);
   color: var(--designer);
 }
 .roleBtnActive[data-role="engineer"] {
-  background: #eff6ff;
+  background: var(--engineer-bg);
   border-color: var(--engineer);
   color: var(--engineer);
 }
@@ -308,7 +308,7 @@
 }
 .historyDelete:hover {
   background: var(--bg);
-  color: #b91c1c;
+  color: var(--err);
 }
 
 /* フッター */
@@ -421,8 +421,8 @@
   margin-top: 2px;
   letter-spacing: .08em;
 }
-.userTag.designer { background: #fefce8; color: var(--designer); }
-.userTag.engineer { background: #eff6ff; color: var(--engineer); }
+.userTag.designer { background: var(--designer-bg); color: var(--designer); }
+.userTag.engineer { background: var(--engineer-bg); color: var(--engineer); }
 .userText {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -610,7 +610,7 @@
 .sourceLink:hover { text-decoration: underline; }
 
 /* エラー */
-.msgErr .aiText { color: #b91c1c; }
+.msgErr .aiText { color: var(--err); }
 
 /* タイピング */
 .thinking {
@@ -642,6 +642,9 @@
   gap: 10px;
 }
 .rolePill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 500;
@@ -652,8 +655,8 @@
   margin-bottom: 4px;
   flex-shrink: 0;
 }
-.rolePill.designer { background: #fefce8; color: var(--designer); }
-.rolePill.engineer { background: #eff6ff; color: var(--engineer); }
+.rolePill.designer { background: var(--designer-bg); color: var(--designer); }
+.rolePill.engineer { background: var(--engineer-bg); color: var(--engineer); }
 
 .textarea {
   flex: 1;
@@ -673,6 +676,9 @@
 .textarea::placeholder { color: var(--ink3); }
 
 .sendBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 10px 16px;
   background: var(--ink);
   color: #fff;

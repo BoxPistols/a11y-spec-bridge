@@ -32,6 +32,17 @@ type Message = {
   error?: boolean;
 };
 
+// ── SVG アイコン ──────────────────────────────────────
+const sz = (n: number) => ({ width: n, height: n, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const });
+
+const ICO = {
+  newChat:  <svg {...sz(14)}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>,
+  send:     <svg {...sz(16)}><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9"/></svg>,
+  trash:    <svg {...sz(12)}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>,
+  fileIn:   <svg {...sz(12)}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>,
+  fileOut:  <svg {...sz(12)}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>,
+};
+
 // ── 定数 ─────────────────────────────────────────────
 const MODELS: { id: ModelId; label: string; provider: "openai" | "google" }[] = [
   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google" },
@@ -280,9 +291,10 @@ export default function Page() {
             <button
               className={styles.newChatBtn}
               onClick={() => { setCurrentId(null); setMessages([]); }}
-              title="新しい会話"
+              title="新しい会話を開始"
+              aria-label="新しい会話を開始"
             >
-              +
+              {ICO.newChat}
             </button>
           )}
         </div>
@@ -295,16 +307,18 @@ export default function Page() {
               className={`${styles.roleBtn} ${role === "designer" ? styles.roleBtnActive : ""}`}
               data-role="designer"
               onClick={() => setRole("designer")}
+              title="デザイン判断に特化した回答を生成"
             >
-              <span className={styles.roleIcon}>✏</span>
+              <svg {...sz(13)}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>
               Designer
             </button>
             <button
               className={`${styles.roleBtn} ${role === "engineer" ? styles.roleBtnActive : ""}`}
               data-role="engineer"
               onClick={() => setRole("engineer")}
+              title="実装詳細・コード例を含む回答を生成"
             >
-              <span className={styles.roleIcon}>⌨</span>
+              <svg {...sz(13)}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
               Engineer
             </button>
           </div>
@@ -328,7 +342,7 @@ export default function Page() {
                   className={`${styles.modelBtn} ${model === m.id ? styles.modelActive : ""} ${disabled ? styles.modelDisabled : ""}`}
                   onClick={() => !disabled && setModel(m.id)}
                   disabled={disabled}
-                  title={disabled ? "OPENAI_API_KEY が未設定です" : undefined}
+                  title={disabled ? "OPENAI_API_KEY が未設定です" : `${m.label} を使用`}
                 >
                   <span className={`${styles.providerPip} ${styles[m.provider]}`} />
                   {m.label}
@@ -388,17 +402,19 @@ export default function Page() {
               <button
                 className={styles.historyActionBtn}
                 onClick={() => importRef.current?.click()}
-                title="インポート"
+                title="JSONファイルから履歴をインポート"
+                aria-label="履歴をインポート"
               >
-                ↓
+                {ICO.fileIn}
               </button>
               {sessions.length > 0 && (
                 <button
                   className={styles.historyActionBtn}
                   onClick={() => exportToFile(buildExportPayload(sessions), `specbridge-${new Date().toISOString().slice(0, 10)}.json`)}
-                  title="全てエクスポート"
+                  title="全履歴をJSONでエクスポート"
+                  aria-label="全履歴をエクスポート"
                 >
-                  ↑
+                  {ICO.fileOut}
                 </button>
               )}
             </div>
@@ -464,8 +480,9 @@ export default function Page() {
                       exportToFile(buildExportPayload([s]), `specbridge-${s.title.slice(0, 20)}.json`);
                     }}
                     title="この会話をエクスポート"
+                    aria-label="この会話をエクスポート"
                   >
-                    ↑
+                    {ICO.fileOut}
                   </button>
                   <button
                     className={styles.historyDelete}
@@ -481,8 +498,10 @@ export default function Page() {
                         setMessages([]);
                       }
                     }}
+                    title="この会話を削除"
+                    aria-label="この会話を削除"
                   >
-                    ×
+                    {ICO.trash}
                   </button>
                 </div>
               ))}
@@ -542,8 +561,12 @@ export default function Page() {
         {/* ── 入力エリア ── */}
         <div className={styles.inputWrap}>
           <div className={styles.inputRow}>
-            <div className={`${styles.rolePill} ${styles[role]}`}>
-              {role === "designer" ? "✏ Designer" : "⌨ Engineer"}
+            <div className={`${styles.rolePill} ${styles[role]}`} title={role === "designer" ? "デザイナーモードで質問中" : "エンジニアモードで質問中"}>
+              {role === "designer" ? (
+                <><svg {...sz(12)}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg> Designer</>
+              ) : (
+                <><svg {...sz(12)}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Engineer</>
+              )}
             </div>
             <textarea
               className={styles.textarea}
@@ -560,8 +583,8 @@ export default function Page() {
               }}
               rows={2}
             />
-            <button className={styles.sendBtn} onClick={() => handleSubmit()} disabled={loading || !input.trim()}>
-              →
+            <button className={styles.sendBtn} onClick={() => handleSubmit()} disabled={loading || !input.trim()} title="送信 (⌘+Enter)" aria-label="送信">
+              {ICO.send}
             </button>
           </div>
           <div className={styles.inputHint}>⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク</div>
@@ -598,7 +621,7 @@ function MessageBubble({ msg }: { msg: Message }) {
           </div>
           {msg.sources && msg.sources.length > 0 && (
             <div className={styles.sourcesWrap}>
-              <button className={styles.sourcesToggle} onClick={() => setOpen(o => !o)}>
+              <button className={styles.sourcesToggle} onClick={() => setOpen(o => !o)} title={open ? "参照仕様を閉じる" : "参照仕様を展開"}>
                 <span>参照仕様 {msg.sources.length}件</span>
                 <span className={styles.chevron}>{open ? "▲" : "▼"}</span>
               </button>
