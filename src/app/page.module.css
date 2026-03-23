@@ -29,7 +29,7 @@
 }
 .brandMark {
   width: 36px; height: 36px;
-  background: var(--ink);
+  background: #1a1814;
   color: #fff;
   font-family: var(--mono);
   font-size: 12px;
@@ -873,7 +873,7 @@
   align-items: center;
   justify-content: center;
   padding: 10px 16px;
-  background: var(--ink);
+  background: var(--spec);
   color: #fff;
   border: none;
   border-radius: var(--radius);
@@ -883,8 +883,8 @@
   align-self: stretch;
   min-width: 44px;
 }
-.sendBtn:hover:not(:disabled) { opacity: .8; }
-.sendBtn:disabled { opacity: .3; cursor: not-allowed; }
+.sendBtn:hover:not(:disabled) { opacity: .85; }
+.sendBtn:disabled { opacity: .25; cursor: not-allowed; }
 
 .inputHintRow {
   display: flex;
