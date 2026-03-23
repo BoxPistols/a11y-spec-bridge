@@ -5,6 +5,7 @@ import styles from "./page.module.css";
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { SUGGEST_GROUPS } from "../lib/suggests";
 
 // ── 型定義 ────────────────────────────────────────────
 type ModelId    = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
@@ -43,6 +44,8 @@ const ICO = {
   fileOut:  <svg {...sz(12)}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>,
   sun:      <svg {...sz(14)}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
   moon:     <svg {...sz(14)}><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
+  search:   <svg {...sz(14)}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  back:     <svg {...sz(12)}><polyline points="15 18 9 12 15 6"/></svg>,
 };
 
 // ── 定数 ─────────────────────────────────────────────
@@ -52,24 +55,6 @@ const MODELS: { id: ModelId; label: string; provider: "openai" | "google" }[] = 
   { id: "gpt-5.4-nano",     label: "GPT-5.4 nano",    provider: "openai"  },
 ];
 
-const SUGGEST: Record<UserRole, string[]> = {
-  designer: [
-    "disabled と readonly の使い分けを教えて",
-    "モーダルはESCで閉じる必要がある？",
-    "フォーカスリングのデザイン要件は？",
-    "エラーメッセージはどこに置くべき？",
-    "アイコンのみのボタンに必要なことは？",
-    "コントラスト比 4.5:1 はどのケースに必要？",
-  ],
-  engineer: [
-    "aria-label と aria-labelledby の違いは？",
-    "dialog ロールに必要な ARIA 属性は？",
-    "tabindex=0 と tabindex=-1 の使い分けは？",
-    "スクリーンリーダーへの aria-live の影響は？",
-    "input[type=date] のブラウザ対応状況は？",
-    ":focus-visible と :focus の使い分けは？",
-  ],
-};
 
 const SOURCE_META: Record<SourceTag, { label: string; color: string; bg: string }> = {
   MDN:       { label: "MDN",       color: "var(--spec)",   bg: "var(--spec-bg)"   },
@@ -157,6 +142,8 @@ export default function Page() {
   const [sessions,   setSessions]   = useState<ChatSession[]>([]);
   const [currentId,  setCurrentId]  = useState<string | null>(null);
   const [theme,      setTheme]      = useState<"light" | "dark">("light");
+  const [suggestQ,   setSuggestQ]   = useState("");
+  const [suggestCat, setSuggestCat] = useState<string | null>(null);
   const fileRef     = useRef<HTMLInputElement>(null);
   const importRef   = useRef<HTMLInputElement>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
@@ -562,18 +549,101 @@ export default function Page() {
                 WCAG 2.2 / WAI-ARIA / MDN の仕様を検索して、<br />
                 デザインとエンジニアリングの判断を支援します
               </div>
-              <div className={styles.suggests}>
-                <div className={styles.suggestLabel}>
-                  {role === "designer" ? "Designerの質問例" : "Engineerの質問例"}
-                </div>
-                <div className={styles.suggestGrid}>
-                  {SUGGEST[role].map(q => (
-                    <button key={q} className={styles.suggestBtn} onClick={() => handleSubmit(q)}>
-                      {q}
+
+              {/* 検索 */}
+              <div className={styles.suggestSearch}>
+                <span className={styles.suggestSearchIcon}>{ICO.search}</span>
+                <input
+                  className={styles.suggestSearchInput}
+                  placeholder="質問やキーワードで検索..."
+                  value={suggestQ}
+                  onChange={e => { setSuggestQ(e.target.value); setSuggestCat(null); }}
+                />
+                {suggestQ && (
+                  <button className={styles.suggestSearchClear} onClick={() => setSuggestQ("")}>
+                    {ICO.trash}
+                  </button>
+                )}
+              </div>
+
+              {/* カテゴリタグ */}
+              {!suggestQ && (
+                <div className={styles.suggestCats}>
+                  {suggestCat && (
+                    <button className={styles.suggestCatBack} onClick={() => setSuggestCat(null)} title="全カテゴリに戻る">
+                      {ICO.back} 全カテゴリ
+                    </button>
+                  )}
+                  {!suggestCat && SUGGEST_GROUPS.map(g => (
+                    <button
+                      key={g.id}
+                      className={styles.suggestCatPill}
+                      onClick={() => setSuggestCat(g.id)}
+                    >
+                      {g.label}
+                      <span className={styles.suggestCatCount}>{g.items.length}</span>
                     </button>
                   ))}
                 </div>
-              </div>
+              )}
+
+              {/* 質問リスト */}
+              {suggestQ ? (
+                // 検索結果
+                (() => {
+                  const q = suggestQ.toLowerCase();
+                  const results = SUGGEST_GROUPS.flatMap(g =>
+                    g.items.filter(item => item.toLowerCase().includes(q)).map(item => ({ cat: g.label, item }))
+                  );
+                  return results.length > 0 ? (
+                    <div className={styles.suggestResults}>
+                      <div className={styles.suggestResultCount}>{results.length} 件の質問が見つかりました</div>
+                      <div className={styles.suggestGrid}>
+                        {results.map(r => (
+                          <button key={r.item} className={styles.suggestBtn} onClick={() => { handleSubmit(r.item); setSuggestQ(""); }}>
+                            <span className={styles.suggestBtnCat}>{r.cat}</span>
+                            {r.item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={styles.suggestEmpty}>該当する質問がありません。自由に質問を入力してください。</div>
+                  );
+                })()
+              ) : suggestCat ? (
+                // 選択カテゴリの質問一覧
+                (() => {
+                  const group = SUGGEST_GROUPS.find(g => g.id === suggestCat);
+                  if (!group) return null;
+                  return (
+                    <div className={styles.suggestResults}>
+                      <div className={styles.suggestGrid}>
+                        {group.items.map(item => (
+                          <button key={item} className={styles.suggestBtn} onClick={() => handleSubmit(item)}>
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                // カテゴリカード一覧
+                <div className={styles.suggestCatGrid}>
+                  {SUGGEST_GROUPS.map(g => (
+                    <button key={g.id} className={styles.suggestCatCard} onClick={() => setSuggestCat(g.id)}>
+                      <div className={styles.suggestCatCardName}>{g.label}</div>
+                      <div className={styles.suggestCatCardPreview}>
+                        {g.items.slice(0, 2).map(item => (
+                          <div key={item} className={styles.suggestCatCardItem}>{item}</div>
+                        ))}
+                      </div>
+                      <div className={styles.suggestCatCardMore}>他 {g.items.length - 2} 件</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             messages.map(msg => (
