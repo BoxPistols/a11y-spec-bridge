@@ -315,6 +315,9 @@
 .sideFooter {
   margin-top: auto;
   padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .vectorCount {
   display: flex;
@@ -328,6 +331,25 @@
   width: 5px; height: 5px;
   border-radius: 50%;
   background: var(--a11y);
+}
+.themeToggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  cursor: pointer;
+  transition: all .15s;
+}
+.themeToggle:hover {
+  background: var(--bg);
+  border-color: var(--border2);
+  color: var(--ink);
 }
 
 /* ─────────────────────────────────

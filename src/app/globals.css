@@ -33,8 +33,38 @@
   --radius: 6px;
 }
 
+/* 手動ダークモード */
+:root[data-theme="dark"] {
+  --bg:       #121110;
+  --surface:  #1c1a17;
+  --surface2: #282520;
+  --border:   #3a3630;
+  --border2:  #4a4438;
+
+  --ink:      #e8e4dc;
+  --ink2:     #a8a298;
+  --ink3:     #7c7668;
+
+  --spec:     #4d7fff;
+  --spec-bg:  #1a2040;
+  --a11y:     #2aa06a;
+  --a11y-bg:  #0f2a1c;
+  --aria:     #9b6af5;
+  --aria-bg:  #1e1530;
+  --custom:   #e8601c;
+  --custom-bg:#2a1a0f;
+
+  --designer:    #f59e0b;
+  --designer-bg: #2a2510;
+  --engineer:    #3b82f6;
+  --engineer-bg: #101830;
+
+  --err:      #ef4444;
+}
+
+/* システム設定フォールバック（手動設定がないとき） */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg:       #121110;
     --surface:  #1c1a17;
     --surface2: #282520;

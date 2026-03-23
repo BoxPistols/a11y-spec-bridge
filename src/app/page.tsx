@@ -41,6 +41,8 @@ const ICO = {
   trash:    <svg {...sz(12)}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>,
   fileIn:   <svg {...sz(12)}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>,
   fileOut:  <svg {...sz(12)}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>,
+  sun:      <svg {...sz(14)}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
+  moon:     <svg {...sz(14)}><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
 };
 
 // ── 定数 ─────────────────────────────────────────────
@@ -154,6 +156,7 @@ export default function Page() {
   const [hasOpenAI,  setHasOpenAI]  = useState(false);
   const [sessions,   setSessions]   = useState<ChatSession[]>([]);
   const [currentId,  setCurrentId]  = useState<string | null>(null);
+  const [theme,      setTheme]      = useState<"light" | "dark">("light");
   const fileRef     = useRef<HTMLInputElement>(null);
   const importRef   = useRef<HTMLInputElement>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
@@ -164,7 +167,21 @@ export default function Page() {
     const prefs = loadPrefs();
     setRole(prefs.role);
     setModel(prefs.model);
+    // テーマ初期化
+    const saved = localStorage.getItem("specbridge-theme");
+    if (saved === "light" || saved === "dark") {
+      setTheme(saved);
+    } else {
+      setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    }
   }, []);
+
+  function toggleTheme() {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("specbridge-theme", next);
+  }
 
   // 設定変更時に保存
   useEffect(() => { savePrefs(role, model); }, [role, model]);
@@ -511,7 +528,7 @@ export default function Page() {
           )}
         </div>
 
-        {/* ベクトル数 */}
+        {/* フッター */}
         <div className={styles.sideFooter}>
           {vectorCount !== null && (
             <div className={styles.vectorCount}>
@@ -519,6 +536,15 @@ export default function Page() {
               {vectorCount.toLocaleString()} vectors
             </div>
           )}
+          <button
+            className={styles.themeToggle}
+            onClick={toggleTheme}
+            title={theme === "light" ? "ダークモードに切替" : "ライトモードに切替"}
+            aria-label={theme === "light" ? "ダークモードに切替" : "ライトモードに切替"}
+          >
+            {theme === "light" ? ICO.moon : ICO.sun}
+            <span>{theme === "light" ? "Dark" : "Light"}</span>
+          </button>
         </div>
       </aside>
 
