@@ -46,6 +46,9 @@ const ICO = {
   moon:     <svg {...sz(14)}><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
   search:   <svg {...sz(14)}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
   back:     <svg {...sz(12)}><polyline points="15 18 9 12 15 6"/></svg>,
+  copy:     <svg {...sz(13)}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
+  check:    <svg {...sz(13)}><polyline points="20 6 9 17 4 12"/></svg>,
+  download: <svg {...sz(13)}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
 };
 
 // ── 定数 ─────────────────────────────────────────────
@@ -99,6 +102,34 @@ function loadPrefs(): { role: UserRole; model: ModelId } {
 
 function savePrefs(role: UserRole, model: ModelId) {
   localStorage.setItem(PREFS_KEY, JSON.stringify({ role, model }));
+}
+
+// ── テキスト変換ヘルパー ──────────────────────────────
+function mdToPlain(md: string): string {
+  return md
+    .replace(/^#{1,6}\s+/gm, "")         // 見出し
+    .replace(/\*\*(.+?)\*\*/g, "$1")      // 太字
+    .replace(/\*(.+?)\*/g, "$1")          // 斜体
+    .replace(/`{3}[\s\S]*?`{3}/g, m =>    // コードブロック
+      m.replace(/^`{3}\w*\n?/, "").replace(/`{3}$/, ""))
+    .replace(/`(.+?)`/g, "$1")            // インラインコード
+    .replace(/\[(.+?)\]\(.+?\)/g, "$1")   // リンク
+    .replace(/^[-*+]\s+/gm, "- ")         // リスト
+    .replace(/^\d+\.\s+/gm, m => m)       // 番号リスト
+    .replace(/^>\s+/gm, "")               // 引用
+    .replace(/---/g, "")                   // 水平線
+    .replace(/\n{3,}/g, "\n\n")           // 余分な空行
+    .trim();
+}
+
+function downloadText(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── エクスポート / インポート ─────────────────────────
@@ -705,6 +736,35 @@ export default function Page() {
 // ── サブコンポーネント ────────────────────────────────
 function MessageBubble({ msg }: { msg: Message }) {
   const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<"copy" | "dl" | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function close(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(null);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menuOpen]);
+
+  function handleCopy(asMd: boolean) {
+    const text = asMd ? msg.content : mdToPlain(msg.content);
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setMenuOpen(null);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  function handleDownload(asMd: boolean) {
+    const text = asMd ? msg.content : mdToPlain(msg.content);
+    const ext = asMd ? "md" : "txt";
+    const title = msg.content.slice(0, 30).replace(/[^\w\u3000-\u9fff]/g, "_");
+    downloadText(text, `specbridge-${title}.${ext}`);
+    setMenuOpen(null);
+  }
+
   return (
     <div className={`${styles.msg} ${styles[msg.role]} ${msg.error ? styles.msgErr : ""}`}>
       {msg.role === "user" ? (
@@ -722,6 +782,44 @@ function MessageBubble({ msg }: { msg: Message }) {
               <span className={styles.aiTokens}>
                 {msg.tokens.input}↑ {msg.tokens.output}↓ tokens
               </span>
+            )}
+            {!msg.error && (
+              <div className={styles.aiActions} ref={menuRef}>
+                {/* コピー */}
+                <div className={styles.aiActionWrap}>
+                  <button
+                    className={`${styles.aiActionBtn} ${copied ? styles.aiActionDone : ""}`}
+                    onClick={() => setMenuOpen(menuOpen === "copy" ? null : "copy")}
+                    title="コピー"
+                    aria-label="コピー"
+                  >
+                    {copied ? ICO.check : ICO.copy}
+                  </button>
+                  {menuOpen === "copy" && (
+                    <div className={styles.aiActionMenu}>
+                      <button onClick={() => handleCopy(false)}>テキスト</button>
+                      <button onClick={() => handleCopy(true)}>Markdown</button>
+                    </div>
+                  )}
+                </div>
+                {/* ダウンロード */}
+                <div className={styles.aiActionWrap}>
+                  <button
+                    className={styles.aiActionBtn}
+                    onClick={() => setMenuOpen(menuOpen === "dl" ? null : "dl")}
+                    title="ダウンロード"
+                    aria-label="ダウンロード"
+                  >
+                    {ICO.download}
+                  </button>
+                  {menuOpen === "dl" && (
+                    <div className={styles.aiActionMenu}>
+                      <button onClick={() => handleDownload(false)}>テキスト (.txt)</button>
+                      <button onClick={() => handleDownload(true)}>Markdown (.md)</button>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <div className={styles.aiText}>

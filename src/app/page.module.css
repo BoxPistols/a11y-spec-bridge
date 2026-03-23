@@ -649,6 +649,67 @@
   font-size: 12px;
   color: var(--ink3);
 }
+.aiActions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.aiActionWrap {
+  position: relative;
+}
+.aiActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--ink3);
+  cursor: pointer;
+  transition: all .15s;
+}
+.aiActionBtn:hover {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--ink2);
+}
+.aiActionDone {
+  color: var(--a11y);
+}
+.aiActionMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  z-index: 10;
+  overflow: hidden;
+  min-width: 140px;
+}
+.aiActionMenu button {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink2);
+  cursor: pointer;
+  text-align: left;
+  transition: all .1s;
+}
+.aiActionMenu button:hover {
+  background: var(--spec-bg);
+  color: var(--spec);
+}
+.aiActionMenu button + button {
+  border-top: 1px solid var(--border);
+}
 .aiText {
   font-size: 13.5px;
   line-height: 1.85;
