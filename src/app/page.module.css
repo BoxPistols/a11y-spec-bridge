@@ -886,12 +886,36 @@
 .sendBtn:hover:not(:disabled) { opacity: .8; }
 .sendBtn:disabled { opacity: .3; cursor: not-allowed; }
 
+.inputHintRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 7px;
+}
 .inputHint {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--ink3);
-  margin-top: 7px;
   letter-spacing: .05em;
+}
+.newTopicBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  cursor: pointer;
+  transition: all .15s;
+}
+.newTopicBtn:hover {
+  border-color: var(--spec);
+  color: var(--spec);
+  background: var(--spec-bg);
 }
 
 /* スピナー */

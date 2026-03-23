@@ -683,7 +683,19 @@ export default function Page() {
               {ICO.send}
             </button>
           </div>
-          <div className={styles.inputHint}>⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク</div>
+          <div className={styles.inputHintRow}>
+            <div className={styles.inputHint}>⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク</div>
+            {messages.length > 0 && (
+              <button
+                className={styles.newTopicBtn}
+                onClick={() => { setCurrentId(null); setMessages([]); }}
+                title="現在の会話を終了して新しい話題を開始"
+              >
+                {ICO.newChat}
+                <span>新しい話題</span>
+              </button>
+            )}
+          </div>
         </div>
       </main>
     </div>
