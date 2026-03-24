@@ -49,6 +49,7 @@ const ICO = {
   copy:     <svg {...sz(13)}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
   check:    <svg {...sz(13)}><polyline points="20 6 9 17 4 12"/></svg>,
   download: <svg {...sz(13)}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  help:     <svg {...sz(12)}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
 };
 
 // ── 定数 ─────────────────────────────────────────────
@@ -177,6 +178,7 @@ export default function Page() {
   const [theme,      setTheme]      = useState<"light" | "dark">("light");
   const [suggestQ,   setSuggestQ]   = useState("");
   const [suggestCat, setSuggestCat] = useState<string | null>(null);
+  const [showHelp,   setShowHelp]   = useState(false);
   const fileRef     = useRef<HTMLInputElement>(null);
   const importRef   = useRef<HTMLInputElement>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
@@ -340,7 +342,7 @@ export default function Page() {
 
         {/* ロール選択 */}
         <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>あなたの役割</div>
+          <div className={styles.sideLabel}>あなたの役割 <HelpTip text="Designer: デザイン判断に特化した回答。Engineer: 実装コード例を含む回答。回答のトーンが変わります。" /></div>
           <div className={styles.roleSwitch}>
             <button
               className={`${styles.roleBtn} ${role === "designer" ? styles.roleBtnActive : ""}`}
@@ -412,7 +414,7 @@ export default function Page() {
 
         {/* ドキュメントソース */}
         <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>ナレッジソース</div>
+          <div className={styles.sideLabel}>ナレッジソース <HelpTip text="回答の根拠となる仕様データベースです。MDN / WCAG / WAI-ARIA の仕様が事前に埋め込まれています。" /></div>
           <div className={styles.sourceList}>
             {(["MDN", "WCAG", "WAI-ARIA"] as SourceTag[]).map(s => (
               <div key={s} className={styles.sourceRow} style={{ "--c": SOURCE_META[s].color } as React.CSSProperties}>
@@ -432,7 +434,7 @@ export default function Page() {
 
         {/* カスタム追加 */}
         <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>独自ガイドを追加</div>
+          <div className={styles.sideLabel}>独自ガイドを追加 <HelpTip text="自社のデザインガイドやコーディング規約（PDF / TXT / MD）をアップロードすると、回答の根拠に加わります。" /></div>
           <div
             className={`${styles.dropZone} ${dragOver ? styles.dropActive : ""}`}
             onDragOver={e => { e.preventDefault(); setDragOver(true); }}
@@ -586,8 +588,59 @@ export default function Page() {
             {theme === "light" ? ICO.moon : ICO.sun}
             <span>{theme === "light" ? "Dark" : "Light"}</span>
           </button>
+          <button
+            className={styles.themeToggle}
+            onClick={() => setShowHelp(true)}
+            title="使い方ヘルプ"
+            aria-label="使い方ヘルプ"
+          >
+            {ICO.help}
+          </button>
         </div>
       </aside>
+
+      {/* ── ヘルプモーダル ── */}
+      {showHelp && (
+        <div className={styles.helpOverlay} onClick={() => setShowHelp(false)}>
+          <div className={styles.helpModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.helpHeader}>
+              <h2>SpecBridge の使い方</h2>
+              <button className={styles.helpClose} onClick={() => setShowHelp(false)} aria-label="閉じる">&times;</button>
+            </div>
+            <div className={styles.helpBody}>
+              <section>
+                <h3>SpecBridge とは？</h3>
+                <p>WCAG 2.2 / WAI-ARIA / MDN の仕様を根拠に、デザインや実装の判断を支援する RAG チャットボットです。質問すると、関連する仕様を検索し、根拠付きで回答します。</p>
+              </section>
+              <section>
+                <h3>基本の使い方</h3>
+                <ol>
+                  <li><strong>役割を選ぶ</strong> — Designer（デザイン判断中心）or Engineer（実装コード例中心）</li>
+                  <li><strong>質問する</strong> — カテゴリから選ぶか、自由に入力（⌘+Enter で送信）</li>
+                  <li><strong>参照仕様を確認</strong> — 回答下部の「参照仕様」で根拠を確認</li>
+                  <li><strong>追加質問</strong> — 同じ会話で深掘り可能。別の話題は「新しい話題」をクリック</li>
+                </ol>
+              </section>
+              <section>
+                <h3>独自ガイドの追加</h3>
+                <p>自社のデザインガイドやコーディング規約（PDF / TXT / MD）をドロップすると、回答の根拠に加わります。アップロードしたデータはベクトルDBに格納され、以降の質問で検索対象になります。</p>
+              </section>
+              <section>
+                <h3>モデルについて</h3>
+                <ul>
+                  <li><strong>GPT-5.4 nano</strong>（デフォルト・無料） — 高速で軽量</li>
+                  <li><strong>Gemini 2.5 Flash</strong>（無料） — Google の高速モデル</li>
+                  <li><strong>GPT-5.4 mini</strong>（API Key 必要） — より高精度。ご自身の OpenAI API キーを入力すると有効化</li>
+                </ul>
+              </section>
+              <section>
+                <h3>履歴の管理</h3>
+                <p>会話は自動保存されます。JSON形式でエクスポート/インポートも可能です。</p>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── メイン ── */}
       <main className={styles.main}>
@@ -753,6 +806,16 @@ export default function Page() {
         </div>
       </main>
     </div>
+  );
+}
+
+// ── ヘルプツールチップ ────────────────────────────────
+function HelpTip({ text }: { text: string }) {
+  return (
+    <span className={styles.helpTip} aria-label={text}>
+      {ICO.help}
+      <span className={styles.helpTipText}>{text}</span>
+    </span>
   );
 }
 
