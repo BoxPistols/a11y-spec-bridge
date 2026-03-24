@@ -5,7 +5,7 @@ import styles from "./page.module.css";
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { SUGGEST_GROUPS } from "../lib/suggests";
+import { SUGGEST_GROUPS, SUGGEST_THEMES, RECOMMEND } from "../lib/suggests";
 
 // ── 型定義 ────────────────────────────────────────────
 type ModelId    = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
@@ -176,9 +176,10 @@ export default function Page() {
   const [sessions,   setSessions]   = useState<ChatSession[]>([]);
   const [currentId,  setCurrentId]  = useState<string | null>(null);
   const [theme,      setTheme]      = useState<"light" | "dark">("light");
-  const [suggestQ,   setSuggestQ]   = useState("");
-  const [suggestCat, setSuggestCat] = useState<string | null>(null);
-  const [showHelp,   setShowHelp]   = useState(false);
+  const [suggestQ,     setSuggestQ]     = useState("");
+  const [suggestCat,   setSuggestCat]   = useState<string | null>(null);
+  const [suggestTheme, setSuggestTheme] = useState<string | null>(null);
+  const [showHelp,     setShowHelp]     = useState(false);
   const fileRef     = useRef<HTMLInputElement>(null);
   const importRef   = useRef<HTMLInputElement>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
@@ -664,7 +665,7 @@ export default function Page() {
                   className={styles.suggestSearchInput}
                   placeholder="質問やキーワードで検索..."
                   value={suggestQ}
-                  onChange={e => { setSuggestQ(e.target.value); setSuggestCat(null); }}
+                  onChange={e => { setSuggestQ(e.target.value); setSuggestCat(null); setSuggestTheme(null); }}
                 />
                 {suggestQ && (
                   <button className={styles.suggestSearchClear} onClick={() => setSuggestQ("")}>
@@ -673,30 +674,9 @@ export default function Page() {
                 )}
               </div>
 
-              {/* カテゴリタグ */}
-              {!suggestQ && (
-                <div className={styles.suggestCats}>
-                  {suggestCat && (
-                    <button className={styles.suggestCatBack} onClick={() => setSuggestCat(null)} title="全カテゴリに戻る">
-                      {ICO.back} 全カテゴリ
-                    </button>
-                  )}
-                  {!suggestCat && SUGGEST_GROUPS.map(g => (
-                    <button
-                      key={g.id}
-                      className={styles.suggestCatPill}
-                      onClick={() => setSuggestCat(g.id)}
-                    >
-                      {g.label}
-                      <span className={styles.suggestCatCount}>{g.items.length}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* 質問リスト */}
+              {/* コンテンツ切替 */}
               {suggestQ ? (
-                // 検索結果
+                // ── 検索結果 ──
                 (() => {
                   const q = suggestQ.toLowerCase();
                   const results = SUGGEST_GROUPS.flatMap(g =>
@@ -719,12 +699,16 @@ export default function Page() {
                   );
                 })()
               ) : suggestCat ? (
-                // 選択カテゴリの質問一覧
+                // ── カテゴリ内の質問一覧 ──
                 (() => {
                   const group = SUGGEST_GROUPS.find(g => g.id === suggestCat);
                   if (!group) return null;
                   return (
                     <div className={styles.suggestResults}>
+                      <button className={styles.suggestCatBack} onClick={() => { setSuggestCat(null); }}>
+                        {ICO.back} {suggestTheme ? SUGGEST_THEMES.find(t => t.id === suggestTheme)?.label ?? "戻る" : "戻る"}
+                      </button>
+                      <div className={styles.suggestResultCount}>{group.label} — {group.items.length} 件</div>
                       <div className={styles.suggestGrid}>
                         {group.items.map(item => (
                           <button key={item} className={styles.suggestBtn} onClick={() => handleSubmit(item)}>
@@ -735,21 +719,62 @@ export default function Page() {
                     </div>
                   );
                 })()
-              ) : (
-                // カテゴリカード一覧
-                <div className={styles.suggestCatGrid}>
-                  {SUGGEST_GROUPS.map(g => (
-                    <button key={g.id} className={styles.suggestCatCard} onClick={() => setSuggestCat(g.id)}>
-                      <div className={styles.suggestCatCardName}>{g.label}</div>
-                      <div className={styles.suggestCatCardPreview}>
-                        {g.items.slice(0, 2).map(item => (
-                          <div key={item} className={styles.suggestCatCardItem}>{item}</div>
+              ) : suggestTheme ? (
+                // ── テーマ内のカテゴリ一覧 ──
+                (() => {
+                  const theme = SUGGEST_THEMES.find(t => t.id === suggestTheme);
+                  if (!theme) return null;
+                  const groups = SUGGEST_GROUPS.filter(g => theme.categories.includes(g.id));
+                  return (
+                    <div className={styles.suggestResults}>
+                      <button className={styles.suggestCatBack} onClick={() => setSuggestTheme(null)}>
+                        {ICO.back} トップに戻る
+                      </button>
+                      <div className={styles.suggestCatGrid}>
+                        {groups.map(g => (
+                          <button key={g.id} className={styles.suggestCatCard} onClick={() => setSuggestCat(g.id)}>
+                            <div className={styles.suggestCatCardName}>{g.label}</div>
+                            <div className={styles.suggestCatCardPreview}>
+                              {g.items.slice(0, 2).map(item => (
+                                <div key={item} className={styles.suggestCatCardItem}>{item}</div>
+                              ))}
+                            </div>
+                            <div className={styles.suggestCatCardMore}>他 {g.items.length - 2} 件</div>
+                          </button>
                         ))}
                       </div>
-                      <div className={styles.suggestCatCardMore}>他 {g.items.length - 2} 件</div>
-                    </button>
-                  ))}
-                </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                // ── ホーム: おすすめ + テーマ ──
+                <>
+                  <div className={styles.suggestSection}>
+                    <div className={styles.suggestSectionLabel}>おすすめの質問</div>
+                    <div className={styles.suggestGrid}>
+                      {RECOMMEND.map(q => (
+                        <button key={q} className={styles.suggestBtn} onClick={() => handleSubmit(q)}>
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={styles.suggestSection}>
+                    <div className={styles.suggestSectionLabel}>カテゴリから探す</div>
+                    <div className={styles.suggestThemeGrid}>
+                      {SUGGEST_THEMES.map(t => {
+                        const count = SUGGEST_GROUPS.filter(g => t.categories.includes(g.id)).reduce((a, g) => a + g.items.length, 0);
+                        return (
+                          <button key={t.id} className={styles.suggestThemeCard} onClick={() => setSuggestTheme(t.id)}>
+                            <div className={styles.suggestThemeLabel}>{t.label}</div>
+                            <div className={styles.suggestThemeCount}>{count} 件</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           ) : (

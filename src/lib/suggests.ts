@@ -4,6 +4,35 @@ export type SuggestGroup = {
   items: string[];
 };
 
+// ── 上位テーマ（カテゴリの親グループ） ──
+export type SuggestTheme = {
+  id: string;
+  label: string;
+  categories: string[];
+};
+
+export const SUGGEST_THEMES: SuggestTheme[] = [
+  { id: "design",      label: "デザイン判断",        categories: ["color-contrast", "image-icon", "animation", "content-design"] },
+  { id: "component",   label: "UIコンポーネント",     categories: ["form", "button-link", "modal", "navigation", "carousel", "table", "search-filter"] },
+  { id: "interaction",  label: "インタラクション",     categories: ["keyboard-focus", "dnd-interaction", "mobile"] },
+  { id: "structure",    label: "構造・ARIA",          categories: ["aria", "semantics", "i18n"] },
+  { id: "dynamic",      label: "動的コンテンツ・通知", categories: ["loading-dynamic", "error-notification", "video-audio"] },
+  { id: "ops",          label: "テスト・運用",         categories: ["testing", "auth-security", "dataviz"] },
+];
+
+// ── おすすめ（初回表示用・幅広いジャンルからピック） ──
+export const RECOMMEND: string[] = [
+  "disabled と readonly の使い分けを教えて",
+  "コントラスト比 4.5:1 はどのケースに必要？",
+  "モーダルはESCで閉じる必要がある？",
+  "aria-label と aria-labelledby の違いは？",
+  "アイコンのみのボタンに必要なことは？",
+  "フォーカスリングのデザイン要件は？",
+  "スキップリンクの実装方法は？",
+  "エラーメッセージはどこに置くべき？",
+];
+
+// ── カテゴリ別質問 ──
 export const SUGGEST_GROUPS: SuggestGroup[] = [
   {
     id: "form",

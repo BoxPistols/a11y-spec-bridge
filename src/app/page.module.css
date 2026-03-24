@@ -539,42 +539,7 @@
   color: var(--ink);
 }
 
-/* カテゴリタグ */
-.suggestCats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 16px;
-  justify-content: center;
-}
-.suggestCatPill {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink2);
-  cursor: pointer;
-  transition: all .15s;
-}
-.suggestCatPill:hover {
-  border-color: var(--spec);
-  color: var(--spec);
-  background: var(--spec-bg);
-}
-.suggestCatCount {
-  font-size: 12px;
-  color: var(--ink3);
-  background: var(--surface2);
-  padding: 0 5px;
-  border-radius: 8px;
-  min-width: 18px;
-  text-align: center;
-}
+/* 戻るボタン */
 .suggestCatBack {
   display: flex;
   align-items: center;
@@ -588,10 +553,58 @@
   color: var(--ink2);
   cursor: pointer;
   transition: all .15s;
+  margin-bottom: 12px;
 }
 .suggestCatBack:hover {
   color: var(--ink);
   border-color: var(--ink3);
+}
+
+/* セクション見出し */
+.suggestSection {
+  text-align: left;
+  margin-bottom: 20px;
+}
+.suggestSectionLabel {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* テーマカード */
+.suggestThemeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.suggestThemeCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all .15s;
+  text-align: left;
+}
+.suggestThemeCard:hover {
+  border-color: var(--spec);
+  background: var(--spec-bg);
+}
+.suggestThemeLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.suggestThemeCount {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
 }
 
 /* カテゴリカード一覧 */
