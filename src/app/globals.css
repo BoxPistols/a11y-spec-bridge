@@ -33,63 +33,62 @@
   --radius: 6px;
 }
 
-/* 手動ダークモード */
+/* ダークモード共通値（クールグレー系・高コントラスト） */
 :root[data-theme="dark"] {
-  --bg:       #111010;
-  --surface:  #1a1917;
-  --surface2: #252320;
-  --border:   #403c36;
-  --border2:  #58524a;
+  --bg:       #0d1117;
+  --surface:  #151b23;
+  --surface2: #1c2129;
+  --border:   #2d333b;
+  --border2:  #444c56;
 
-  --ink:      #ede9e2;
-  --ink2:     #bab4aa;
-  --ink3:     #9a9488;
+  --ink:      #f0f3f6;
+  --ink2:     #c6cdd5;
+  --ink3:     #8b949e;
 
-  --spec:     #6b9aff;
-  --spec-bg:  #162040;
-  --a11y:     #3dba80;
-  --a11y-bg:  #0f2a1c;
-  --aria:     #a880f8;
-  --aria-bg:  #1e1530;
-  --custom:   #f0782a;
-  --custom-bg:#2a1a0f;
+  --spec:     #79b8ff;
+  --spec-bg:  #0d1d3a;
+  --a11y:     #56d89e;
+  --a11y-bg:  #0b2a1a;
+  --aria:     #b392f0;
+  --aria-bg:  #1a1230;
+  --custom:   #f0883e;
+  --custom-bg:#26190d;
 
-  --designer:    #fbbf24;
-  --designer-bg: #2a2510;
-  --engineer:    #60a5fa;
-  --engineer-bg: #101830;
+  --designer:    #e3b341;
+  --designer-bg: #1e1a0e;
+  --engineer:    #79b8ff;
+  --engineer-bg: #0d1d3a;
 
-  --err:      #f87171;
+  --err:      #f97583;
 }
 
-/* システム設定フォールバック（手動設定がないとき） */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg:       #111010;
-    --surface:  #1a1917;
-    --surface2: #252320;
-    --border:   #403c36;
-    --border2:  #58524a;
+    --bg:       #0d1117;
+    --surface:  #151b23;
+    --surface2: #1c2129;
+    --border:   #2d333b;
+    --border2:  #444c56;
 
-    --ink:      #ede9e2;
-    --ink2:     #bab4aa;
-    --ink3:     #9a9488;
+    --ink:      #f0f3f6;
+    --ink2:     #c6cdd5;
+    --ink3:     #8b949e;
 
-    --spec:     #6b9aff;
-    --spec-bg:  #162040;
-    --a11y:     #3dba80;
-    --a11y-bg:  #0f2a1c;
-    --aria:     #a880f8;
-    --aria-bg:  #1e1530;
-    --custom:   #f0782a;
-    --custom-bg:#2a1a0f;
+    --spec:     #79b8ff;
+    --spec-bg:  #0d1d3a;
+    --a11y:     #56d89e;
+    --a11y-bg:  #0b2a1a;
+    --aria:     #b392f0;
+    --aria-bg:  #1a1230;
+    --custom:   #f0883e;
+    --custom-bg:#26190d;
 
-    --designer:    #fbbf24;
-    --designer-bg: #2a2510;
-    --engineer:    #60a5fa;
-    --engineer-bg: #101830;
+    --designer:    #e3b341;
+    --designer-bg: #1e1a0e;
+    --engineer:    #79b8ff;
+    --engineer-bg: #0d1d3a;
 
-    --err:      #f87171;
+    --err:      #f97583;
   }
 }
 
