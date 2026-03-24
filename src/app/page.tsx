@@ -6,51 +6,9 @@ import styles from "./page.module.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SUGGEST_GROUPS, SUGGEST_THEMES, RECOMMEND } from "../lib/suggests";
-
-// ── 型定義 ────────────────────────────────────────────
-type ModelId    = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
-type UserRole   = "designer" | "engineer";
-type SourceTag  = "MDN" | "WCAG" | "WAI-ARIA" | "CUSTOM";
-
-type Source = {
-  id: string;
-  score: number;
-  source: SourceTag;
-  title: string;
-  section: string;
-  url: string;
-  snippet: string;
-};
-
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  model?: ModelId;
-  userRole?: UserRole;
-  sources?: Source[];
-  tokens?: { input?: number; output?: number };
-  error?: boolean;
-};
-
-// ── SVG アイコン ──────────────────────────────────────
-const sz = (n: number) => ({ width: n, height: n, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const });
-
-const ICO = {
-  newChat:  <svg {...sz(14)}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>,
-  send:     <svg {...sz(16)}><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9"/></svg>,
-  trash:    <svg {...sz(12)}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>,
-  fileIn:   <svg {...sz(12)}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>,
-  fileOut:  <svg {...sz(12)}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>,
-  sun:      <svg {...sz(14)}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
-  moon:     <svg {...sz(14)}><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
-  search:   <svg {...sz(14)}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
-  back:     <svg {...sz(12)}><polyline points="15 18 9 12 15 6"/></svg>,
-  copy:     <svg {...sz(13)}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
-  check:    <svg {...sz(13)}><polyline points="20 6 9 17 4 12"/></svg>,
-  download: <svg {...sz(13)}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-  help:     <svg {...sz(12)}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-};
+import { ICO, sz } from "../lib/icons";
+import { mdToPlain, downloadText, exportToFile, buildExportPayload, validateImport, MAX_SESSIONS } from "../lib/helpers";
+import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
 type ModelTier = "free" | "byok"; // byok = bring your own key
@@ -69,14 +27,6 @@ const SOURCE_META: Record<SourceTag, { label: string; color: string; bg: string 
 };
 
 // ── チャット履歴管理 ─────────────────────────────────
-type ChatSession = {
-  id: string;
-  title: string;
-  messages: Message[];
-  role: UserRole;
-  createdAt: string;
-};
-
 const STORAGE_KEY = "specbridge-sessions";
 const PREFS_KEY = "specbridge-prefs";
 
@@ -104,60 +54,6 @@ function loadPrefs(): { role: UserRole; model: ModelId } {
 
 function savePrefs(role: UserRole, model: ModelId) {
   localStorage.setItem(PREFS_KEY, JSON.stringify({ role, model }));
-}
-
-// ── テキスト変換ヘルパー ──────────────────────────────
-function mdToPlain(md: string): string {
-  return md
-    .replace(/^#{1,6}\s+/gm, "")         // 見出し
-    .replace(/\*\*(.+?)\*\*/g, "$1")      // 太字
-    .replace(/\*(.+?)\*/g, "$1")          // 斜体
-    .replace(/`{3}[\s\S]*?`{3}/g, m =>    // コードブロック
-      m.replace(/^`{3}\w*\n?/, "").replace(/`{3}$/, ""))
-    .replace(/`(.+?)`/g, "$1")            // インラインコード
-    .replace(/\[(.+?)\]\(.+?\)/g, "$1")   // リンク
-    .replace(/^[-*+]\s+/gm, "- ")         // リスト
-    .replace(/^\d+\.\s+/gm, m => m)       // 番号リスト
-    .replace(/^>\s+/gm, "")               // 引用
-    .replace(/---/g, "")                   // 水平線
-    .replace(/\n{3,}/g, "\n\n")           // 余分な空行
-    .trim();
-}
-
-function downloadText(content: string, filename: string) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ── エクスポート / インポート ─────────────────────────
-function exportToFile(data: object, filename: string) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function buildExportPayload(sessions: ChatSession[]) {
-  return { app: "specbridge", version: 1, exportedAt: new Date().toISOString(), sessions };
-}
-
-function validateImport(data: unknown): ChatSession[] | null {
-  if (!data || typeof data !== "object") return null;
-  const d = data as Record<string, unknown>;
-  if (d.app !== "specbridge" || !Array.isArray(d.sessions)) return null;
-  // 各セッションの最低限の構造チェック
-  for (const s of d.sessions) {
-    if (!s.id || !Array.isArray(s.messages)) return null;
-  }
-  return d.sessions as ChatSession[];
 }
 
 // ── コンポーネント ────────────────────────────────────
@@ -221,7 +117,7 @@ export default function Page() {
       const title = firstUserMsg?.content.slice(0, 40) ?? "新しい会話";
       const updated = prev.filter(s => s.id !== id);
       updated.unshift({ id, title, messages, role, createdAt: new Date().toISOString() });
-      const capped = updated.slice(0, 30);
+      const capped = updated.slice(0, MAX_SESSIONS);
       saveSessions(capped);
       return capped;
     });
@@ -255,8 +151,11 @@ export default function Page() {
     try {
       const res  = await fetch("/api/query", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, model, role, k: 6, history, ...(model === "gpt-5.4-mini" && userApiKey ? { userApiKey } : {}) }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(model === "gpt-5.4-mini" && userApiKey ? { "X-User-Api-Key": userApiKey } : {}),
+        },
+        body: JSON.stringify({ question, model, role, k: 6, history }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -409,7 +308,7 @@ export default function Page() {
                 if (!v && model === "gpt-5.4-mini") setModel("gpt-5.4-nano");
               }}
             />
-            <div className={styles.apiKeyHint}>入力すると GPT-5.4 mini が有効になります</div>
+            <div className={styles.apiKeyHint}>入力すると GPT-5.4 mini が有効になります。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
           </div>
         </div>
 
@@ -508,7 +407,7 @@ export default function Page() {
                       }
                     }
                     merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                    const capped = merged.slice(0, 100);
+                    const capped = merged.slice(0, MAX_SESSIONS);
                     saveSessions(capped);
                     alert(`${imported.length} 件中 ${added} 件の新規セッションをインポートしました。`);
                     return capped;
@@ -703,12 +602,15 @@ export default function Page() {
                 (() => {
                   const group = SUGGEST_GROUPS.find(g => g.id === suggestCat);
                   if (!group) return null;
+                  const themeName = suggestTheme ? SUGGEST_THEMES.find(t => t.id === suggestTheme)?.label : null;
                   return (
                     <div className={styles.suggestResults}>
-                      <button className={styles.suggestCatBack} onClick={() => { setSuggestCat(null); }}>
-                        {ICO.back} {suggestTheme ? SUGGEST_THEMES.find(t => t.id === suggestTheme)?.label ?? "戻る" : "戻る"}
-                      </button>
-                      <div className={styles.suggestResultCount}>{group.label} — {group.items.length} 件</div>
+                      <div className={styles.breadcrumb}>
+                        <button onClick={() => { setSuggestCat(null); setSuggestTheme(null); }}>トップ</button>
+                        {themeName && <><span className={styles.breadcrumbSep}>/</span><button onClick={() => setSuggestCat(null)}>{themeName}</button></>}
+                        <span className={styles.breadcrumbSep}>/</span>
+                        <span className={styles.breadcrumbCurrent}>{group.label}</span>
+                      </div>
                       <div className={styles.suggestGrid}>
                         {group.items.map(item => (
                           <button key={item} className={styles.suggestBtn} onClick={() => handleSubmit(item)}>
@@ -727,9 +629,11 @@ export default function Page() {
                   const groups = SUGGEST_GROUPS.filter(g => theme.categories.includes(g.id));
                   return (
                     <div className={styles.suggestResults}>
-                      <button className={styles.suggestCatBack} onClick={() => setSuggestTheme(null)}>
-                        {ICO.back} トップに戻る
-                      </button>
+                      <div className={styles.breadcrumb}>
+                        <button onClick={() => setSuggestTheme(null)}>トップ</button>
+                        <span className={styles.breadcrumbSep}>/</span>
+                        <span className={styles.breadcrumbCurrent}>{theme.label}</span>
+                      </div>
                       <div className={styles.suggestCatGrid}>
                         {groups.map(g => (
                           <button key={g.id} className={styles.suggestCatCard} onClick={() => setSuggestCat(g.id)}>
