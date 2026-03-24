@@ -52,10 +52,11 @@ const ICO = {
 };
 
 // ── 定数 ─────────────────────────────────────────────
-const MODELS: { id: ModelId; label: string; provider: "openai" | "google" }[] = [
-  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google" },
-  { id: "gpt-5.4-mini",     label: "GPT-5.4 mini",    provider: "openai"  },
-  { id: "gpt-5.4-nano",     label: "GPT-5.4 nano",    provider: "openai"  },
+type ModelTier = "free" | "byok"; // byok = bring your own key
+const MODELS: { id: ModelId; label: string; provider: "openai" | "google"; tier: ModelTier }[] = [
+  { id: "gpt-5.4-nano",     label: "GPT-5.4 nano",    provider: "openai", tier: "free" },
+  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google", tier: "free" },
+  { id: "gpt-5.4-mini",     label: "GPT-5.4 mini",    provider: "openai", tier: "byok" },
 ];
 
 
@@ -90,14 +91,14 @@ function saveSessions(sessions: ChatSession[]) {
 }
 
 function loadPrefs(): { role: UserRole; model: ModelId } {
-  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.4-mini" };
+  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.4-nano" };
   try {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}");
     return {
       role: (["designer", "engineer"] as UserRole[]).includes(p.role) ? p.role : "designer",
       model: MODELS.some(m => m.id === p.model) ? p.model : "gemini-2.5-flash",
     };
-  } catch { return { role: "designer", model: "gpt-5.4-mini" }; }
+  } catch { return { role: "designer", model: "gpt-5.4-nano" }; }
 }
 
 function savePrefs(role: UserRole, model: ModelId) {
@@ -161,7 +162,7 @@ function validateImport(data: unknown): ChatSession[] | null {
 // ── コンポーネント ────────────────────────────────────
 export default function Page() {
   const [role,       setRole]       = useState<UserRole>("designer");
-  const [model,      setModel]      = useState<ModelId>("gemini-2.5-flash");
+  const [model,      setModel]      = useState<ModelId>("gpt-5.4-nano");
   const [messages,   setMessages]   = useState<Message[]>([]);
   const [input,      setInput]      = useState("");
   const [loading,    setLoading]    = useState(false);
@@ -170,6 +171,7 @@ export default function Page() {
   const [dragOver,   setDragOver]   = useState(false);
   const [customDocs, setCustomDocs] = useState<string[]>([]);
   const [hasOpenAI,  setHasOpenAI]  = useState(false);
+  const [userApiKey, setUserApiKey] = useState("");
   const [sessions,   setSessions]   = useState<ChatSession[]>([]);
   const [currentId,  setCurrentId]  = useState<string | null>(null);
   const [theme,      setTheme]      = useState<"light" | "dark">("light");
@@ -185,6 +187,8 @@ export default function Page() {
     const prefs = loadPrefs();
     setRole(prefs.role);
     setModel(prefs.model);
+    // ユーザー API キー読み込み
+    setUserApiKey(localStorage.getItem("specbridge-user-apikey") ?? "");
     // テーマ初期化
     const saved = localStorage.getItem("specbridge-theme");
     if (saved === "light" || saved === "dark") {
@@ -249,7 +253,7 @@ export default function Page() {
       const res  = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, model, role, k: 6, history }),
+        body: JSON.stringify({ question, model, role, k: 6, history, ...(model === "gpt-5.4-mini" && userApiKey ? { userApiKey } : {}) }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -370,20 +374,39 @@ export default function Page() {
           <div className={styles.sideLabel}>モデル</div>
           <div className={styles.modelList}>
             {MODELS.map(m => {
-              const disabled = m.provider === "openai" && !hasOpenAI;
+              const isByok = m.tier === "byok";
+              const disabled = isByok && !userApiKey;
               return (
                 <button
                   key={m.id}
                   className={`${styles.modelBtn} ${model === m.id ? styles.modelActive : ""} ${disabled ? styles.modelDisabled : ""}`}
                   onClick={() => !disabled && setModel(m.id)}
                   disabled={disabled}
-                  title={disabled ? "OPENAI_API_KEY が未設定です" : `${m.label} を使用`}
+                  title={disabled ? "API キーを入力すると使えます" : `${m.label} を使用`}
                 >
                   <span className={`${styles.providerPip} ${styles[m.provider]}`} />
                   {m.label}
+                  {m.tier === "free" && <span className={styles.freeBadge}>Free</span>}
+                  {isByok && <span className={styles.byokBadge}>API Key</span>}
                 </button>
               );
             })}
+          </div>
+          <div className={styles.apiKeySection}>
+            <div className={styles.apiKeyLabel}>OpenAI API Key（任意）</div>
+            <input
+              className={styles.apiKeyInput}
+              type="password"
+              placeholder="sk-..."
+              value={userApiKey}
+              onChange={e => {
+                const v = e.target.value;
+                setUserApiKey(v);
+                localStorage.setItem("specbridge-user-apikey", v);
+                if (!v && model === "gpt-5.4-mini") setModel("gpt-5.4-nano");
+              }}
+            />
+            <div className={styles.apiKeyHint}>入力すると GPT-5.4 mini が有効になります</div>
           </div>
         </div>
 

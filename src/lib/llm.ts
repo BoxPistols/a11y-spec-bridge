@@ -60,9 +60,15 @@ async function callOpenAI(
   role: UserRole,
   context: string,
   question: string,
-  history?: ChatMessage[]
+  history?: ChatMessage[],
+  userApiKey?: string
 ): Promise<LLMResponse> {
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  // mini はユーザーの API キー必須、nano はサーバーキー
+  const apiKey = model === "gpt-5.4-mini"
+    ? userApiKey
+    : process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("API キーが設定されていません");
+  const client = new OpenAI({ apiKey });
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: buildSystem(role) },
   ];
@@ -127,13 +133,14 @@ export async function generate(
   role: UserRole,
   results: SearchResult[],
   question: string,
-  history?: ChatMessage[]
+  history?: ChatMessage[],
+  userApiKey?: string
 ): Promise<LLMResponse> {
   const context = buildContext(results);
   switch (modelId) {
     case "gpt-5.4-nano":
     case "gpt-5.4-mini":
-      return callOpenAI(modelId, role, context, question, history);
+      return callOpenAI(modelId, role, context, question, history, userApiKey);
     case "gemini-2.5-flash":
       return callGemini(role, context, question, history);
     default:

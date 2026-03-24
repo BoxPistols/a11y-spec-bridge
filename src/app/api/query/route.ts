@@ -6,17 +6,23 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { question, model, role = "designer", k = 6, filterSource, history } = await req.json() as {
+    const { question, model, role = "designer", k = 6, filterSource, history, userApiKey } = await req.json() as {
       question: string;
       model: ModelId;
       role?: UserRole;
       k?: number;
       filterSource?: Source;
       history?: { role: "user" | "assistant"; content: string }[];
+      userApiKey?: string;
     };
 
     if (!question) return NextResponse.json({ error: "question required" }, { status: 400 });
     if (!model)    return NextResponse.json({ error: "model required" },    { status: 400 });
+
+    // gpt-5.4-mini はユーザーの API キーが必須
+    if (model === "gpt-5.4-mini" && !userApiKey) {
+      return NextResponse.json({ error: "GPT-5.4 mini にはご自身の OpenAI API キーが必要です" }, { status: 400 });
+    }
 
     const results = await search(question, k, filterSource);
 
@@ -28,7 +34,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const llmRes = await generate(model, role, results, question, history);
+    const llmRes = await generate(model, role, results, question, history, userApiKey);
 
     return NextResponse.json({
       answer: llmRes.answer,
