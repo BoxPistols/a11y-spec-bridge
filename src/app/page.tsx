@@ -5,6 +5,7 @@ import styles from "./page.module.css";
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 import { SUGGEST_GROUPS, SUGGEST_THEMES, RECOMMEND } from "../lib/suggests";
 import { ICO, sz } from "../lib/icons";
 import { mdToPlain, downloadText, exportToFile, buildExportPayload, validateImport, MAX_SESSIONS } from "../lib/helpers";
@@ -838,7 +839,7 @@ function MessageBubble({ msg }: { msg: Message }) {
             )}
           </div>
           <div className={styles.aiText}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>{msg.content}</ReactMarkdown>
           </div>
           {msg.sources && msg.sources.length > 0 && (
             <div className={styles.sourcesWrap}>

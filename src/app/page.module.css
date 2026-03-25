@@ -872,15 +872,16 @@
 .aiText code {
   font-family: var(--mono);
   font-size: .9em;
-  background: var(--surface2);
-  padding: .2em .4em;
+  background: #272822;
+  color: #f8f8f2;
+  padding: .2em .5em;
   border-radius: 3px;
-  border: 1px solid var(--border);
+  border: none;
 }
 .aiText pre {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 12px;
+  background: #272822;
+  border: 1px solid #3e3d32;
+  padding: 16px;
   border-radius: var(--radius);
   overflow-x: auto;
   margin: 1em 0;
@@ -890,7 +891,8 @@
   border: none;
   padding: 0;
   font-size: .85em;
-  line-height: 1.6;
+  line-height: 1.7;
+  color: #f8f8f2;
 }
 .aiText blockquote {
   margin: 1em 0;
