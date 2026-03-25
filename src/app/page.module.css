@@ -1212,3 +1212,53 @@
 .helpBody strong {
   color: var(--ink);
 }
+
+/* 学習ページバナー（ウェルカム画面） */
+.learnBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color .15s;
+}
+.learnBanner:hover {
+  border-color: var(--border2);
+}
+.learnBannerText { flex: 1; text-align: left; }
+.learnBannerTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.learnBannerDesc {
+  font-size: 12px;
+  color: var(--ink3);
+}
+.learnBannerLink {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--spec);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.learnBannerLink:hover {
+  background: var(--bg);
+  border-color: var(--spec);
+}

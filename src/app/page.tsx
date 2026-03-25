@@ -6,6 +6,7 @@ import styles from "./page.module.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import Link from "next/link";
 import { SUGGEST_GROUPS, SUGGEST_THEMES, RECOMMEND } from "../lib/suggests";
 import { ICO, sz } from "../lib/icons";
 import { mdToPlain, downloadText, exportToFile, buildExportPayload, validateImport, MAX_SESSIONS } from "../lib/helpers";
@@ -502,6 +503,14 @@ export default function Page() {
             {theme === "light" ? ICO.moon : ICO.sun}
             <span>{theme === "light" ? "Dark" : "Light"}</span>
           </button>
+          <Link
+            href="/learn"
+            className={styles.themeToggle}
+            title="RAGのしくみを学ぶ"
+            aria-label="RAGのしくみを学ぶ"
+          >
+            {ICO.learn}
+          </Link>
           <button
             className={styles.themeToggle}
             onClick={() => setShowHelp(true)}
@@ -691,6 +700,16 @@ export default function Page() {
                         );
                       })}
                     </div>
+                  </div>
+
+                  <div className={styles.learnBanner}>
+                    <div className={styles.learnBannerText}>
+                      <div className={styles.learnBannerTitle}>{ICO.learn} RAG のしくみを学ぶ</div>
+                      <div className={styles.learnBannerDesc}>SpecBridge がどう動いているか、パイプラインをステップごとに解説</div>
+                    </div>
+                    <Link href="/learn" className={styles.learnBannerLink}>
+                      解説を見る {ICO.arrowRight}
+                    </Link>
                   </div>
                 </>
               )}

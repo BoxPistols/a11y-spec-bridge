@@ -1,0 +1,514 @@
+/* ── 学習ページ ── */
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+  min-height: 100vh;
+}
+
+/* ヘッダー */
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.backLink {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  text-decoration: none;
+  margin-bottom: 20px;
+  transition: color .15s;
+}
+.backLink:hover {
+  color: var(--ink);
+}
+.badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .15em;
+  color: var(--spec);
+  border: 1px solid var(--spec-bg);
+  padding: 4px 12px;
+  border-radius: 3px;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+.title {
+  font-size: clamp(24px, 4vw, 36px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+.subtitle {
+  color: var(--ink3);
+  font-size: 13px;
+}
+
+/* タブ */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin-bottom: 28px;
+}
+.tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--ink3);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all .2s;
+  letter-spacing: .05em;
+}
+.tab:hover {
+  color: var(--ink2);
+}
+.tabActive {
+  background: var(--surface2);
+  color: var(--spec);
+  border: 1px solid var(--border);
+}
+
+/* フェーズカード */
+.phaseGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.phaseCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.phaseLabel {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.phaseDesc {
+  font-size: 12px;
+  color: var(--ink3);
+  line-height: 1.7;
+}
+.phaseDesc code {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--a11y);
+  background: var(--a11y-bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+/* セクションタイトル */
+.sectionTitle {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.sectionNote {
+  font-size: 13px;
+  color: var(--ink3);
+  margin-bottom: 16px;
+  line-height: 1.7;
+}
+
+/* ── フロー図 ── */
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 8px;
+}
+
+.stepCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.stepCard:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.stepCard:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.stepCard + .stepCard { border-top: none; }
+
+.stepCard::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--step-color, var(--spec));
+  transform: scaleY(0);
+  transition: transform .2s;
+  transform-origin: top;
+}
+.stepCardOpen::before { transform: scaleY(1); }
+.stepCardOpen { background: var(--surface2); }
+
+.stepHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+}
+.stepNum {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--step-color, var(--spec));
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.stepMeta { flex: 1; }
+.stepTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.stepDesc {
+  font-size: 12px;
+  color: var(--ink3);
+}
+.stepArrow {
+  color: var(--ink3);
+  font-size: 10px;
+  transition: transform .2s;
+}
+.stepArrowOpen { transform: rotate(90deg); }
+
+.stepBody {
+  padding: 0 18px 18px 64px;
+}
+.stepBody p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink2);
+  margin-bottom: 14px;
+}
+
+/* コードブロック */
+.codeBlock {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.codeLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink3);
+  letter-spacing: .05em;
+}
+.codeDot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--step-color, var(--spec));
+  opacity: .7;
+}
+.codePre {
+  padding: 14px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-x: auto;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* データフロー */
+.dataFlow {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.flowRow {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.flowRow:last-child { border-bottom: none; }
+.flowLabel {
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.flowDot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--step-color, var(--spec));
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.flowVal {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink2);
+}
+
+/* ── シミュレーション ── */
+.simContainer {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.simHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink3);
+  letter-spacing: .1em;
+}
+.simDot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--a11y);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
+}
+.simBody { padding: 16px; }
+.simInput {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.simInput input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color .2s;
+}
+.simInput input:focus { border-color: var(--ink2); }
+.simBtn {
+  padding: 10px 18px;
+  background: var(--spec);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity .2s;
+  white-space: nowrap;
+}
+.simBtn:hover { opacity: .85; }
+.simBtn:disabled { opacity: .4; cursor: not-allowed; }
+
+.pipeline {
+  display: flex;
+  flex-direction: column;
+}
+.pipeStep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  opacity: .35;
+  transition: all .3s;
+}
+.pipeRunning {
+  opacity: 1;
+  border-color: var(--spec);
+  background: var(--spec-bg);
+}
+.pipeDone {
+  opacity: .75;
+  border-color: var(--a11y);
+}
+.pipeIcon {
+  font-size: 12px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-weight: 500;
+}
+.pipeName {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  flex: 1;
+}
+.pipeStatus {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink3);
+}
+.pipeRunning .pipeStatus { color: var(--spec); }
+.pipeDone .pipeStatus { color: var(--a11y); }
+.pipeArrow {
+  text-align: center;
+  color: var(--border2);
+  font-size: 10px;
+  padding: 2px 0;
+  font-family: var(--mono);
+}
+
+.simOutput {
+  margin-top: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.simOutputLabel {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink3);
+  margin-bottom: 8px;
+  letter-spacing: .1em;
+}
+.simOutputAnswer {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.simOutputSources {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.simSourceLabel {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink3);
+  margin-bottom: 6px;
+}
+.simSource {
+  display: flex;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink3);
+  margin-bottom: 4px;
+}
+.srcFile { color: var(--aria); }
+
+/* ── コード逆引き ── */
+.codeRefList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.codeRefCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.codeRefHeader {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.codeRefFn {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+.codeRefFile {
+  font-size: 12px;
+  color: var(--ink3);
+}
+.codeRefBody {
+  padding: 14px 16px;
+}
+.codeRefDesc {
+  font-size: 12px;
+  color: var(--ink3);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+/* ── 用語辞典 ── */
+.glossaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.termCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  transition: border-color .2s;
+}
+.termCard:hover { border-color: var(--border2); }
+.termName {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.termDesc {
+  font-size: 12px;
+  color: var(--ink3);
+  line-height: 1.7;
+}
+
+/* ── レスポンシブ ── */
+@media (max-width: 640px) {
+  .container { padding: 24px 16px 60px; }
+  .phaseGrid { grid-template-columns: 1fr; }
+  .stepBody { padding-left: 18px; }
+  .flowRow { grid-template-columns: 90px 1fr; }
+  .glossaryGrid { grid-template-columns: 1fr; }
+}
