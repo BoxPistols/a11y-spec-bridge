@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.svg",
         width: 1200,
         height: 630,
         alt: "SpecBridge — Design × Spec Q&A",
@@ -28,15 +28,11 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "SpecBridge — Design × Spec Q&A",
     description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
-    images: ["/og-image.png"],
+    images: ["/og-image.svg"],
   },
   icons: {
     icon: [
-      { url: "/favicon.ico" },
       { url: "/icon.svg", type: "image/svg+xml" },
-    ],
-    apple: [
-      { url: "/apple-touch-icon.png" },
     ],
   },
   manifest: "/manifest.json",

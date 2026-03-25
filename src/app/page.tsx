@@ -224,7 +224,17 @@ export default function Page() {
 
         {/* ロゴ */}
         <div className={styles.brand}>
-          <div className={styles.brandMark}>SB</div>
+          <div className={styles.brandMark}>
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+              <path d="M6 22 Q16 8 26 22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+              <line x1="4" y1="22" x2="28" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="10" y1="22" x2="10" y2="26" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="22" y1="22" x2="22" y2="26" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="13" y1="14.5" x2="13" y2="22" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+              <line x1="16" y1="11" x2="16" y2="22" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+              <line x1="19" y1="14.5" x2="19" y2="22" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+            </svg>
+          </div>
           <div>
             <div className={styles.brandName}>SpecBridge</div>
             <div className={styles.brandSub}>Design × Spec Q&A</div>
