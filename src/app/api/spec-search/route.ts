@@ -8,7 +8,7 @@ export const runtime = "nodejs";
  * ux-review-plugin 等の外部ツールがWCAG/ARIA/MDNの仕様を検索できる
  *
  * POST /api/spec-search
- * Body: { query: string, k?: number, source?: "MDN"|"WCAG"|"WAI-ARIA" }
+ * Body: { query: string, k?: number, source?: "MDN"|"WCAG"|"WAI-ARIA"|"CUSTOM"|"CURATED" }
  * Response: { results: SearchResult[] }
  */
 export async function POST(req: NextRequest) {

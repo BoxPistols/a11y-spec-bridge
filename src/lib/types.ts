@@ -1,6 +1,6 @@
 export type ModelId  = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
 export type UserRole = "designer" | "engineer";
-export type SourceTag = "MDN" | "WCAG" | "WAI-ARIA" | "CUSTOM";
+export type SourceTag = "MDN" | "WCAG" | "WAI-ARIA" | "CUSTOM" | "CURATED";
 
 export type Source = {
   id: string;

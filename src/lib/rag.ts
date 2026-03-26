@@ -7,7 +7,7 @@
 import OpenAI from "openai";
 import { Index } from "@upstash/vector";
 
-export type Source = "MDN" | "WCAG" | "WAI-ARIA" | "CUSTOM";
+export type Source = "MDN" | "WCAG" | "WAI-ARIA" | "CUSTOM" | "CURATED";
 
 export type SearchResult = {
   id: string;
@@ -86,20 +86,21 @@ export async function search(
 export type Chunk = {
   id: string;
   text: string;
-  metadata: { source: "CUSTOM"; title: string; section: string; url: string };
+  metadata: { source: Source; title: string; section: string; url: string };
 };
 
-export function splitText(text: string, title: string, chunkSize = 600, overlap = 60): Chunk[] {
+export function splitText(text: string, title: string, chunkSize = 600, overlap = 60, source: Source = "CUSTOM"): Chunk[] {
   const chunks: Chunk[] = [];
   const cleaned = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n");
+  const prefix = source.toLowerCase();
   let start = 0, idx = 0;
   while (start < cleaned.length) {
     const slice = cleaned.slice(start, Math.min(start + chunkSize, cleaned.length)).trim();
     if (slice.length > 30) {
       chunks.push({
-        id: `custom-${Date.now()}-${idx++}`,
-        text: `[CUSTOM] ${title}\n\n${slice}`,
-        metadata: { source: "CUSTOM", title, section: `chunk-${idx}`, url: "" },
+        id: `${prefix}-${Date.now()}-${idx++}`,
+        text: `[${source}] ${title}\n\n${slice}`,
+        metadata: { source, title, section: `chunk-${idx}`, url: "" },
       });
     }
     start += chunkSize - overlap;

@@ -26,6 +26,7 @@ const SOURCE_META: Record<SourceTag, { label: string; color: string; bg: string 
   WCAG:      { label: "WCAG 2.2",  color: "var(--a11y)",   bg: "var(--a11y-bg)"   },
   "WAI-ARIA":{ label: "WAI-ARIA",  color: "var(--aria)",   bg: "var(--aria-bg)"   },
   CUSTOM:    { label: "カスタム",  color: "var(--custom)", bg: "var(--custom-bg)" },
+  CURATED:   { label: "精査済",   color: "var(--curated)", bg: "var(--curated-bg)" },
 };
 
 // ── チャット履歴管理 ─────────────────────────────────
@@ -78,9 +79,11 @@ export default function Page() {
   const [suggestCat,   setSuggestCat]   = useState<string | null>(null);
   const [suggestTheme, setSuggestTheme] = useState<string | null>(null);
   const [showHelp,     setShowHelp]     = useState(false);
+  const [inputHeight, setInputHeight]  = useState(60);       // テキストエリアの高さ(px)
   const fileRef     = useRef<HTMLInputElement>(null);
   const importRef   = useRef<HTMLInputElement>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
+  const dragRef     = useRef<{ startY: number; startH: number } | null>(null);
 
   // 設定・セッション読み込み
   useEffect(() => {
@@ -105,6 +108,30 @@ export default function Page() {
     document.documentElement.setAttribute("data-theme", next);
     localStorage.setItem("specbridge-theme", next);
   }
+
+  // リサイズハンドル：ドラッグで入力エリアの高さを変更
+  const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    dragRef.current = { startY: clientY, startH: inputHeight };
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (!dragRef.current) return;
+      const y = "touches" in ev ? ev.touches[0].clientY : ev.clientY;
+      const delta = dragRef.current.startY - y;           // 上にドラッグ→高さ増加
+      setInputHeight(Math.max(40, Math.min(400, dragRef.current.startH + delta)));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("touchmove", onMove);
+    document.addEventListener("touchend", onUp);
+  }, [inputHeight]);
 
   // 設定変更時に保存
   useEffect(() => { savePrefs(role, model); }, [role, model]);
@@ -331,7 +358,7 @@ export default function Page() {
         <div className={styles.sideSection}>
           <div className={styles.sideLabel}>ナレッジソース <HelpTip text="回答の根拠となる仕様データベースです。MDN / WCAG / WAI-ARIA の仕様が事前に埋め込まれています。" /></div>
           <div className={styles.sourceList}>
-            {(["MDN", "WCAG", "WAI-ARIA"] as SourceTag[]).map(s => (
+            {(["MDN", "WCAG", "WAI-ARIA", "CURATED"] as SourceTag[]).map(s => (
               <div key={s} className={styles.sourceRow} style={{ "--c": SOURCE_META[s].color } as React.CSSProperties}>
                 <span className={styles.sourcePip} />
                 <span>{SOURCE_META[s].label}</span>
@@ -424,7 +451,8 @@ export default function Page() {
                     merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                     const capped = merged.slice(0, MAX_SESSIONS);
                     saveSessions(capped);
-                    alert(`${imported.length} 件中 ${added} 件の新規セッションをインポートしました。`);
+                    // 副作用(alert)はステートアップデーター外で実行
+                    setTimeout(() => alert(`${imported.length} 件中 ${added} 件の新規セッションをインポートしました。`), 0);
                     return capped;
                   });
                 } catch {
@@ -725,6 +753,15 @@ export default function Page() {
 
         {/* ── 入力エリア ── */}
         <div className={styles.inputWrap}>
+          {/* リサイズハンドル */}
+          <div
+            className={styles.resizeHandle}
+            onMouseDown={handleResizeStart}
+            onTouchStart={handleResizeStart}
+            title="ドラッグで入力欄の高さを変更"
+          >
+            <div className={styles.resizeBar} />
+          </div>
           <div className={styles.inputRow}>
             <div className={`${styles.rolePill} ${styles[role]}`} title={role === "designer" ? "デザイナーモードで質問中" : "エンジニアモードで質問中"}>
               {role === "designer" ? (
@@ -735,6 +772,7 @@ export default function Page() {
             </div>
             <textarea
               className={styles.textarea}
+              style={{ height: `${inputHeight}px` }}
               placeholder={role === "designer"
                 ? "デザインの判断・仕様の根拠を質問..."
                 : "実装・ARIAの使い方を質問..."
@@ -746,7 +784,6 @@ export default function Page() {
                   e.preventDefault(); handleSubmit();
                 }
               }}
-              rows={2}
             />
             <button className={styles.sendBtn} onClick={() => handleSubmit()} disabled={loading || !input.trim()} title="送信 (⌘+Enter)" aria-label="送信">
               {ICO.send}

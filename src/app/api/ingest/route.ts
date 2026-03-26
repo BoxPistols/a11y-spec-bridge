@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { splitText, ingestChunks } from "@/lib/rag";
+import { splitText, ingestChunks, type Source } from "@/lib/rag";
 
 export const runtime = "nodejs";
+
+const ALLOWED_SOURCES: Source[] = ["CUSTOM", "CURATED"];
 
 export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get("content-type") ?? "";
 
     if (contentType.includes("application/json")) {
-      const { text, title = "Custom Document" } = await req.json();
+      const { text, title = "Custom Document", source = "CUSTOM" } = await req.json() as {
+        text?: string;
+        title?: string;
+        source?: Source;
+      };
       if (!text) return NextResponse.json({ error: "text required" }, { status: 400 });
-      const chunks = splitText(text, title);
+      if (!ALLOWED_SOURCES.includes(source)) {
+        return NextResponse.json({ error: `source は ${ALLOWED_SOURCES.join("/")} のみ` }, { status: 400 });
+      }
+      const chunks = splitText(text, title, 600, 60, source);
       await ingestChunks(chunks);
-      return NextResponse.json({ chunks: chunks.length, title });
+      return NextResponse.json({ chunks: chunks.length, title, source });
     }
 
     const formData = await req.formData();

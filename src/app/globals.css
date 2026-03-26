@@ -21,6 +21,8 @@
   --aria-bg:  #f4f0ff;
   --custom:   #c2410c;   /* カスタム */
   --custom-bg:#fff4ed;
+  --curated:  #0891b2;   /* キュレーション */
+  --curated-bg:#ecfeff;
 
   --designer:    #d97706;   /* デザイナーロール */
   --designer-bg: #fefce8;
@@ -55,6 +57,8 @@
   --aria-bg:  #1a1230;
   --custom:   #f0883e;
   --custom-bg:#26190d;
+  --curated:  #67e8f9;
+  --curated-bg:#0c2d32;
 
   --designer:    #e3b341;
   --designer-bg: #1e1a0e;
@@ -84,6 +88,8 @@
     --aria-bg:  #1a1230;
     --custom:   #f0883e;
     --custom-bg:#26190d;
+    --curated:  #67e8f9;
+    --curated-bg:#0c2d32;
 
     --designer:    #e3b341;
     --designer-bg: #1e1a0e;

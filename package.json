@@ -8,7 +8,8 @@
     "start": "next start",
     "crawl": "npx tsx scripts/crawl.ts",
     "seed": "npx tsx scripts/seed.ts",
-    "crawl:seed": "npx tsx scripts/crawl.ts && npx tsx scripts/seed.ts"
+    "crawl:seed": "npx tsx scripts/crawl.ts && npx tsx scripts/seed.ts",
+    "ingest:curated": "npx tsx scripts/ingest-curated.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
@@ -32,6 +33,7 @@
     "@types/react-dom": "^19.0.0",
     "@types/turndown": "^5.0.5",
     "tsx": "^4.19.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.1"
   }
 }
