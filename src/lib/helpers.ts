@@ -21,26 +21,30 @@ export function mdToPlain(md: string): string {
     .trim();
 }
 
-// ── テキストダウンロード ──
-export function downloadText(content: string, filename: string) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+// ── ダウンロード共通処理 ──
+function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  // Safari対応: ダウンロード開始後にクリーンアップ
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
+// ── テキストダウンロード ──
+export function downloadText(content: string, filename: string) {
+  triggerDownload(new Blob([content], { type: "text/plain;charset=utf-8" }), filename);
 }
 
 // ── エクスポート ──
 export function exportToFile(data: object, filename: string) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  triggerDownload(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), filename);
 }
 
 export function buildExportPayload(sessions: ChatSession[]) {

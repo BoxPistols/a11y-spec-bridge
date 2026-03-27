@@ -79,7 +79,11 @@ export default function Page() {
   const [suggestCat,   setSuggestCat]   = useState<string | null>(null);
   const [suggestTheme, setSuggestTheme] = useState<string | null>(null);
   const [showHelp,     setShowHelp]     = useState(false);
-  const [inputHeight, setInputHeight]  = useState(60);       // テキストエリアの高さ(px)
+  const [inputHeight, setInputHeight]  = useState(() => {
+    if (typeof window === "undefined") return 60;
+    const v = parseInt(localStorage.getItem("specbridge-input-height") ?? "", 10);
+    return v >= 40 && v <= 400 ? v : 60;
+  });
   const fileRef     = useRef<HTMLInputElement>(null);
   const importRef   = useRef<HTMLInputElement>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
@@ -120,7 +124,12 @@ export default function Page() {
       const delta = dragRef.current.startY - y;           // 上にドラッグ→高さ増加
       setInputHeight(Math.max(40, Math.min(400, dragRef.current.startH + delta)));
     };
-    const onUp = () => {
+    const onUp = (ev: MouseEvent | TouchEvent) => {
+      if (dragRef.current) {
+        const y = "changedTouches" in ev ? ev.changedTouches[0].clientY : ev.clientY;
+        const h = Math.max(40, Math.min(400, dragRef.current.startH + (dragRef.current.startY - y)));
+        localStorage.setItem("specbridge-input-height", String(h));
+      }
       dragRef.current = null;
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
@@ -401,24 +410,26 @@ export default function Page() {
           <div className={styles.historyHeader}>
             <div className={styles.sideLabel}>履歴</div>
             <div className={styles.historyActions}>
-              <button
-                className={styles.historyActionBtn}
-                onClick={() => importRef.current?.click()}
-                title="JSONファイルから履歴をインポート"
-                aria-label="履歴をインポート"
-              >
-                {ICO.fileIn}
-              </button>
               {sessions.length > 0 && (
                 <button
                   className={styles.historyActionBtn}
                   onClick={() => exportToFile(buildExportPayload(sessions), `specbridge-${new Date().toISOString().slice(0, 10)}.json`)}
-                  title="全履歴をJSONでエクスポート"
-                  aria-label="全履歴をエクスポート"
+                  title="全履歴をJSONで保存"
+                  aria-label="全履歴を保存"
                 >
-                  {ICO.fileOut}
+                  {ICO.download}
+                  <span>保存</span>
                 </button>
               )}
+              <button
+                className={styles.historyActionBtn}
+                onClick={() => importRef.current?.click()}
+                title="JSONファイルから履歴を読込"
+                aria-label="履歴を読込"
+              >
+                {ICO.upload}
+                <span>読込</span>
+              </button>
             </div>
           </div>
           <input
@@ -450,9 +461,11 @@ export default function Page() {
                     }
                     merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                     const capped = merged.slice(0, MAX_SESSIONS);
-                    saveSessions(capped);
-                    // 副作用(alert)はステートアップデーター外で実行
-                    setTimeout(() => alert(`${imported.length} 件中 ${added} 件の新規セッションをインポートしました。`), 0);
+                    // 副作用はアップデーター外で実行
+                    queueMicrotask(() => {
+                      saveSessions(capped);
+                      alert(`${imported.length} 件中 ${added} 件の新規セッションをインポートしました。`);
+                    });
                     return capped;
                   });
                 } catch {
@@ -482,10 +495,10 @@ export default function Page() {
                       e.stopPropagation();
                       exportToFile(buildExportPayload([s]), `specbridge-${s.title.slice(0, 20)}.json`);
                     }}
-                    title="この会話をエクスポート"
-                    aria-label="この会話をエクスポート"
+                    title="この会話を保存"
+                    aria-label="この会話を保存"
                   >
-                    {ICO.fileOut}
+                    {ICO.download}
                   </button>
                   <button
                     className={styles.historyDelete}

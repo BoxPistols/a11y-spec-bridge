@@ -330,15 +330,17 @@
   gap: 4px;
 }
 .historyActionBtn {
-  width: 24px; height: 24px;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; gap: 3px;
+  padding: 4px 8px;
   background: var(--surface2);
   border: 1px solid var(--border);
-  border-radius: 3px;
-  font-size: 12px;
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 11px;
   color: var(--ink3);
   cursor: pointer;
   transition: all .15s;
+  white-space: nowrap;
 }
 .historyActionBtn:hover {
   background: var(--bg);
@@ -1031,7 +1033,28 @@
 .inputWrap {
   border-top: 1px solid var(--border);
   background: var(--surface);
-  padding: 14px 48px 16px;
+  padding: 0 48px 16px;
+}
+/* リサイズハンドル */
+.resizeHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  cursor: ns-resize;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.resizeBar {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border2);
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+.resizeHandle:hover .resizeBar {
+  opacity: 1;
 }
 .inputRow {
   display: flex;
