@@ -9,7 +9,8 @@
     "crawl": "npx tsx scripts/crawl.ts",
     "seed": "npx tsx scripts/seed.ts",
     "crawl:seed": "npx tsx scripts/crawl.ts && npx tsx scripts/seed.ts",
-    "ingest:curated": "npx tsx scripts/ingest-curated.ts"
+    "ingest:curated": "npx tsx scripts/ingest-curated.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

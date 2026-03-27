@@ -449,25 +449,19 @@ export default function Page() {
                     alert("無効なファイル形式です。SpecBridge のエクスポートファイルを選択してください。");
                     return;
                   }
-                  setSessions(prev => {
-                    const ids = new Set(prev.map(s => s.id));
-                    const merged = [...prev];
-                    let added = 0;
-                    for (const s of imported) {
-                      if (!ids.has(s.id)) {
-                        merged.push(s);
-                        added++;
-                      }
-                    }
-                    merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                    const capped = merged.slice(0, MAX_SESSIONS);
-                    // 副作用はアップデーター外で実行
-                    queueMicrotask(() => {
-                      saveSessions(capped);
-                      alert(`${imported.length} 件中 ${added} 件の新規セッションをインポートしました。`);
-                    });
-                    return capped;
-                  });
+                  // localStorage から最新のセッションを直接取得（stale state 回避）
+                  const current = loadSessions();
+                  const ids = new Set(current.map(s => s.id));
+                  const merged = [...current];
+                  let added = 0;
+                  for (const s of imported) {
+                    if (!ids.has(s.id)) { merged.push(s); added++; }
+                  }
+                  merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  const capped = merged.slice(0, MAX_SESSIONS);
+                  saveSessions(capped);
+                  setSessions(capped);
+                  alert(`${imported.length} 件中 ${added} 件の新規セッションをインポートしました。`);
                 } catch {
                   alert("JSONの読み込みに失敗しました。");
                 }
