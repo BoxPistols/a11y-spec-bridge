@@ -1298,6 +1298,15 @@
   color: var(--ink);
 }
 
+.helpLearnLink {
+  color: var(--spec);
+  text-decoration: none;
+  font-weight: 600;
+}
+.helpLearnLink:hover {
+  text-decoration: underline;
+}
+
 /* 学習ページバナー（ウェルカム画面） */
 .learnBanner {
   display: flex;

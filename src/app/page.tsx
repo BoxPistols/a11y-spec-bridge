@@ -662,6 +662,11 @@ export default function Page() {
                 <h3>履歴の管理</h3>
                 <p>会話は自動保存されます。JSON形式でエクスポート/インポートも可能です。</p>
               </section>
+              <section>
+                <h3>RAG のしくみを学ぶ</h3>
+                <p>SpecBridge がどのように仕様を検索し回答を生成しているか、フロー解説・シミュレーション・コード逆引きで学べます。</p>
+                <p><Link href="/learn" className={styles.helpLearnLink} onClick={() => setShowHelp(false)}>学習ページを開く →</Link></p>
+              </section>
             </div>
           </div>
         </div>
