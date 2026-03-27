@@ -260,6 +260,68 @@
   line-height: 1.4;
 }
 
+/* 招待コード */
+.inviteSection {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.inviteRow {
+  display: flex;
+  gap: 6px;
+}
+.inviteRow .apiKeyInput {
+  flex: 1;
+}
+.inviteBtn {
+  padding: 6px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink2);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.inviteBtn:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: var(--ink2);
+}
+.inviteBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.inviteOk {
+  font-size: 12px;
+  color: var(--a11y);
+  margin-top: 4px;
+}
+.inviteNg {
+  font-size: 12px;
+  color: var(--err);
+  margin-top: 4px;
+}
+
+/* 残り回数バッジ */
+.quotaBadge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink2);
+}
+.quotaLow {
+  color: var(--err);
+  border-color: var(--err);
+  background: var(--surface);
+}
+
 /* ソース一覧 */
 .sourceList { display: flex; flex-direction: column; gap: 5px; }
 .sourceRow {

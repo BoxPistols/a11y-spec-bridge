@@ -79,6 +79,9 @@ export default function Page() {
   const [suggestCat,   setSuggestCat]   = useState<string | null>(null);
   const [suggestTheme, setSuggestTheme] = useState<string | null>(null);
   const [showHelp,     setShowHelp]     = useState(false);
+  const [inviteCode,   setInviteCode]   = useState("");
+  const [inviteValid,  setInviteValid]  = useState<boolean | null>(null);
+  const [quota,        setQuota]        = useState<{ remaining: number; limit: number } | null>(null);
   const [inputHeight, setInputHeight]  = useState(() => {
     if (typeof window === "undefined") return 60;
     const v = parseInt(localStorage.getItem("specbridge-input-height") ?? "", 10);
@@ -97,6 +100,12 @@ export default function Page() {
     setModel(prefs.model);
     // ユーザー API キー読み込み
     setUserApiKey(localStorage.getItem("specbridge-user-apikey") ?? "");
+    // 招待コード読み込み
+    const savedInvite = localStorage.getItem("specbridge-invite-code") ?? "";
+    if (savedInvite) {
+      setInviteCode(savedInvite);
+      setInviteValid(true);
+    }
     // テーマ初期化
     const saved = localStorage.getItem("specbridge-theme");
     if (saved === "light" || saved === "dark") {
@@ -105,6 +114,20 @@ export default function Page() {
       setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     }
   }, []);
+
+  // 残り回数を取得
+  const fetchQuota = useCallback(async (code?: string) => {
+    if (userApiKey) { setQuota(null); return; }
+    try {
+      const res = await fetch("/api/quota", {
+        headers: code ? { "x-invite-code": code } : {},
+      });
+      const data = await res.json();
+      setQuota(data);
+    } catch { /* ignore */ }
+  }, [userApiKey]);
+
+  useEffect(() => { fetchQuota(inviteCode || undefined); }, [fetchQuota, inviteCode]);
 
   function toggleTheme() {
     const next = theme === "light" ? "dark" : "light";
@@ -187,12 +210,14 @@ export default function Page() {
       .slice(-10)
       .map(m => ({ role: m.role, content: m.content }));
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (model === "gpt-5.4-mini" && userApiKey) headers["X-User-Api-Key"] = userApiKey;
+      else if (userApiKey) headers["X-User-Api-Key"] = userApiKey;
+      if (inviteCode) headers["x-invite-code"] = inviteCode;
+
       const res  = await fetch("/api/query", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(model === "gpt-5.4-mini" && userApiKey ? { "X-User-Api-Key": userApiKey } : {}),
-        },
+        headers,
         body: JSON.stringify({ question, model, role, k: 6, history }),
       });
       const data = await res.json();
@@ -215,6 +240,7 @@ export default function Page() {
       }]);
     } finally {
       setLoading(false);
+      fetchQuota(inviteCode || undefined);
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     }
   }
@@ -360,6 +386,47 @@ export default function Page() {
               }}
             />
             <div className={styles.apiKeyHint}>入力すると GPT-5.4 mini が有効になります。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
+          </div>
+
+          {/* 招待コード */}
+          <div className={styles.inviteSection}>
+            <div className={styles.apiKeyLabel}>招待コード（任意）</div>
+            <div className={styles.inviteRow}>
+              <input
+                className={styles.apiKeyInput}
+                type="text"
+                placeholder="招待コードを入力..."
+                value={inviteCode}
+                onChange={e => setInviteCode(e.target.value)}
+              />
+              <button
+                className={styles.inviteBtn}
+                disabled={!inviteCode.trim()}
+                onClick={async () => {
+                  const code = inviteCode.trim();
+                  try {
+                    const res = await fetch("/api/verify-invite", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ code }),
+                    });
+                    const { valid } = await res.json();
+                    setInviteValid(valid);
+                    if (valid) {
+                      localStorage.setItem("specbridge-invite-code", code);
+                      fetchQuota(code);
+                    } else {
+                      localStorage.removeItem("specbridge-invite-code");
+                    }
+                  } catch { setInviteValid(false); }
+                }}
+              >
+                確認
+              </button>
+            </div>
+            {inviteValid === true && <div className={styles.inviteOk}>認証済み — 利用上限が拡張されています</div>}
+            {inviteValid === false && <div className={styles.inviteNg}>無効なコードです</div>}
+            <div className={styles.apiKeyHint}>招待コードがなくても利用できます（1日{quota?.limit ?? "..."}回まで）。自分のAPIキーを入力すると無制限です。</div>
           </div>
         </div>
 
@@ -797,7 +864,14 @@ export default function Page() {
             </button>
           </div>
           <div className={styles.inputHintRow}>
-            <div className={styles.inputHint}>⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク</div>
+            <div className={styles.inputHint}>
+              ⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク
+              {!userApiKey && quota && (
+                <span className={`${styles.quotaBadge} ${quota.remaining <= 3 ? styles.quotaLow : ""}`}>
+                  本日あと {quota.remaining}/{quota.limit} 回
+                </span>
+              )}
+            </div>
             {messages.length > 0 && (
               <button
                 className={styles.newTopicBtn}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { search, type Source } from "@/lib/rag";
 import { generate, type ModelId, type UserRole } from "@/lib/llm";
+import { checkRateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,18 @@ export async function POST(req: NextRequest) {
 
     if (model === "gpt-5.4-mini" && !userApiKey) {
       return NextResponse.json({ error: "GPT-5.4 mini にはご自身の OpenAI API キーが必要です" }, { status: 400 });
+    }
+
+    // レート制限（自分のAPIキーがあればスキップ）
+    if (!userApiKey) {
+      const inviteCode = req.headers.get("x-invite-code");
+      const rl = await checkRateLimit(req, inviteCode);
+      if (!rl.allowed) {
+        return NextResponse.json(
+          { error: `本日の利用上限（${rl.limit}回）に達しました。ご自身のAPIキーを設定すると無制限に利用できます。`, remaining: 0, limit: rl.limit },
+          { status: 429 },
+        );
+      }
     }
 
     const results = await search(question, k, filterSource);
