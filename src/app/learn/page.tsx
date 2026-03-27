@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
+import hljs from "highlight.js/lib/core";
+import typescript from "highlight.js/lib/languages/typescript";
+import json from "highlight.js/lib/languages/json";
 import styles from "./learn.module.css";
+
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("json", json);
 
 // ── タブ定義 ──
 type TabId = "flow" | "sim" | "code" | "glossary";
@@ -236,6 +242,19 @@ const GLOSSARY = [
   { term: "ロール別プロンプト", color: "var(--designer)", desc: "SpecBridge独自の機能。Designer/Engineerの2ロールでシステムプロンプトを切替え、同じ仕様でもデザイン視点/実装視点の回答を生成する。" },
 ];
 
+// ── ハイライト済みコード表示 ──
+function HighlightedCode({ code }: { code: string }) {
+  const html = useMemo(() => {
+    const trimmed = code.trim();
+    // JSON 判定
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      return hljs.highlight(trimmed, { language: "json" }).value;
+    }
+    return hljs.highlight(trimmed, { language: "typescript" }).value;
+  }, [code]);
+  return <pre className={styles.codePre} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
 // ── コンポーネント ──
 function StepCard({ step }: { step: FlowStep }) {
   const [open, setOpen] = useState(false);
@@ -255,7 +274,7 @@ function StepCard({ step }: { step: FlowStep }) {
           {step.code && (
             <div className={styles.codeBlock}>
               <div className={styles.codeLabel}><span>{step.code.label}</span><span className={styles.codeDot} /></div>
-              <pre className={styles.codePre}>{step.code.content}</pre>
+              <HighlightedCode code={step.code.content} />
             </div>
           )}
           {step.dataFlow && (
@@ -414,7 +433,7 @@ export default function LearnPage() {
               <div className={styles.codeRefBody}>
                 <p className={styles.codeRefDesc}>{ref.desc}</p>
                 <div className={styles.codeBlock}>
-                  <pre className={styles.codePre}>{ref.code}</pre>
+                  <HighlightedCode code={ref.code} />
                 </div>
               </div>
             </div>

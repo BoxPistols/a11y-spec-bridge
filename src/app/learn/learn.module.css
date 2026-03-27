@@ -213,8 +213,8 @@
 
 /* コードブロック */
 .codeBlock {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: #1e1e2e;
+  border: 1px solid #313244;
   border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 12px;
@@ -224,10 +224,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #313244;
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--ink3);
+  color: #a6adc8;
   letter-spacing: .05em;
 }
 .codeDot {
@@ -242,7 +242,7 @@
   font-size: 12px;
   line-height: 1.7;
   overflow-x: auto;
-  color: var(--ink);
+  color: #cdd6f4;
   white-space: pre-wrap;
   word-break: break-word;
 }
