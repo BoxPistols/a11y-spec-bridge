@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import styles from "./page.module.css";
 
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import Link from "next/link";
@@ -904,6 +904,66 @@ function HelpTip({ text }: { text: string }) {
   );
 }
 
+// ── HTMLライブプレビュー（デザイナー向け視覚例） ──────────
+// rehype-highlight が挿入する <span> ツリーから生のテキストを取り出す
+function extractText(node: unknown): string {
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (node && typeof node === "object" && "props" in node) {
+    const p = (node as { props: { children?: unknown } }).props;
+    return extractText(p.children);
+  }
+  return "";
+}
+
+function HtmlPreview({ code }: { code: string }) {
+  const [show, setShow] = useState(false);
+  // sandbox="" で scripts/popups/forms すべて無効化。CSP metaでsandbox非対応ブラウザに対する二重防御を入れる
+  const srcDoc = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:#222;background:#fff;}</style></head><body>${code}</body></html>`;
+  return (
+    <div className={styles.htmlPreview}>
+      <button
+        type="button"
+        className={styles.previewBtn}
+        onClick={() => setShow(s => !s)}
+        aria-expanded={show}
+      >
+        {show ? "プレビューを閉じる" : "プレビューを表示"}
+      </button>
+      {show && (
+        <iframe
+          className={styles.previewFrame}
+          sandbox=""
+          srcDoc={srcDoc}
+          title="HTMLプレビュー"
+        />
+      )}
+    </div>
+  );
+}
+
+// ReactMarkdown の <pre> を差し替え、html コードブロックの直下にプレビューを挿入
+const mdComponents: Components = {
+  pre({ children, ...rest }) {
+    const child = Array.isArray(children) ? children[0] : children;
+    let lang = "";
+    let codeText = "";
+    if (child && typeof child === "object" && "props" in child) {
+      const cp = (child as { props: { className?: string; children?: unknown } }).props;
+      const m = /language-(\w+)/.exec(cp.className ?? "");
+      lang = m?.[1] ?? "";
+      codeText = extractText(cp.children).replace(/\n$/, "");
+    }
+    return (
+      <>
+        <pre {...rest}>{children}</pre>
+        {lang === "html" && <HtmlPreview code={codeText} />}
+      </>
+    );
+  },
+};
+
 // ── サブコンポーネント ────────────────────────────────
 function MessageBubble({ msg }: { msg: Message }) {
   const [open, setOpen] = useState(false);
@@ -994,7 +1054,7 @@ function MessageBubble({ msg }: { msg: Message }) {
             )}
           </div>
           <div className={styles.aiText}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>{msg.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>{msg.content}</ReactMarkdown>
           </div>
           {msg.sources && msg.sources.length > 0 && (
             <div className={styles.sourcesWrap}>

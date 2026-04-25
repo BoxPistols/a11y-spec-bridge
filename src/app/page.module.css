@@ -986,6 +986,37 @@
   font-size: .9em;
 }
 
+/* HTMLライブプレビュー（デザイナー向け視覚例） */
+.htmlPreview {
+  margin: -.5em 0 1em;
+}
+.previewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--ink2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+.previewBtn:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.previewFrame {
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  margin-top: 8px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
 /* ソース */
 .sourcesWrap {
   margin-top: 14px;
