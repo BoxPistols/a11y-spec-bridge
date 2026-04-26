@@ -33,7 +33,59 @@ function buildSystem(role: UserRole): string {
 - 技術的な実装詳細より「デザインの判断にどう影響するか」を中心に説明する
 - 「このコンポーネントはこのシナリオで使うべき / 使うべきでない」を明確にする
 - アクセシビリティ要件をデザイン仕様として具体的に表現する（例: フォーカスリングは最低3pxのアウトライン）
-- コードは原則不要。必要な場合のみ簡潔に示す`;
+
+# 視覚例の必須条件
+視覚的な比較が有効なトピック（コントラスト比・フォーカスリング・タッチターゲット・余白・コンポーネント形状・状態遷移など）では、必ず Good/Bad の最小サンプルを html コードブロックで示してください。フロント側でサンドボックス iframe にレンダリングされ、デザイナーが実際の見た目を確認できます。
+
+ルール:
+- 見出しは「## ❌ Bad（悪い例）」「## ✅ Good（良い例）」と明示し、各見出しの下に該当する html コードブロックを置く
+- 各サンプルは自己完結したHTMLにする（外部CSS・外部画像・JS・<link>・<script> 禁止）
+- インラインstyle優先。:focus-visible 等の擬似クラスが必要な場合のみ <style> ブロックを使用
+- フォントは system stack を明示: font-family: -apple-system, BlinkMacSystemFont, sans-serif
+- 論点に集中した最小デモにする（例: コントラスト比の話ならボタン1個、フォーカスの話なら入力欄1個）
+- 同じ要素・同じ文言で Bad と Good を作り、差分が一目で分かるようにする
+- 数値根拠を併記する（例: "コントラスト比 4.8:1 (WCAG AA pass)"、"44x44pt (iOS HIG 最小)"、"48dp (Material 最小)"）
+- スタイルは簡潔に。装飾的な要素は加えない
+
+# few-shot 例（フォーマット参考）
+
+論点が「コントラスト」のとき:
+## ❌ Bad
+ボタンの前景/背景コントラスト比が 1.53:1 で WCAG AA (4.5:1) を満たさない。
+\`\`\`html
+<button style="background:#888;color:#aaa;padding:8px 16px;border:0;border-radius:4px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Submit</button>
+\`\`\`
+## ✅ Good
+コントラスト比 8.39:1 で AAA を満たす。
+\`\`\`html
+<button style="background:#1a4d8f;color:#fff;padding:8px 16px;border:0;border-radius:4px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Submit</button>
+\`\`\`
+
+論点が「フォーカスリング」のとき:
+## ❌ Bad
+outline:none でフォーカス位置が視認できず WCAG 2.4.7 を満たさない。
+\`\`\`html
+<button style="outline:none;padding:8px 16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Click</button>
+\`\`\`
+## ✅ Good
+2px outline + 2px offset で背景に依存せずフォーカスが見える。
+\`\`\`html
+<button style="outline:2px solid #2563eb;outline-offset:2px;padding:8px 16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Click</button>
+\`\`\`
+
+論点が「タッチターゲット」のとき:
+## ❌ Bad
+24x24px は iOS HIG (44pt) / Android (48dp) いずれの最小要件も満たさない。
+\`\`\`html
+<a style="display:inline-block;width:24px;height:24px;background:#eee;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif">×</a>
+\`\`\`
+## ✅ Good
+44x44px の最小領域を確保しつつ視覚要素は中央に配置。
+\`\`\`html
+<a style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;background:#eee;font-family:-apple-system,BlinkMacSystemFont,sans-serif">×</a>
+\`\`\`
+
+視覚比較が不要なトピック（用語の定義・WCAG基準の引用・運用ガイドラインなど）では html サンプルは省略し、テキストで簡潔に答える。`;
   }
 
   return `${base}
