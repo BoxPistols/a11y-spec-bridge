@@ -935,12 +935,23 @@ function judgeContrast(html: string): WCAGResult | null {
   return pair ? wcagJudge(pair.fg, pair.bg) : null;
 }
 
+type PreviewTheme = "light" | "dark";
+
+// iframe body のデフォルト bg/fg のみを切替。HTML 内の明示色は上書きしない
+// （これによりデザイナーは「明示色がダーク背景でも視認できるか」を確認できる）
+function buildPreviewSrcDoc(code: string, theme: PreviewTheme): string {
+  const bg = theme === "dark" ? "#1a1a1a" : "#ffffff";
+  const fg = theme === "dark" ? "#e0e0e0" : "#222222";
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:"><style>:root{color-scheme:${theme};}body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:${fg};background:${bg};}</style></head><body>${code}</body></html>`;
+}
+
 function HtmlPreview({ code }: { code: string }) {
   // デザイナーが視覚情報をすぐ見られるよう初期表示はON。ボタンで折り畳み可能
   const [show, setShow] = useState(true);
+  const [theme, setTheme] = useState<PreviewTheme>("light");
   const wcag = judgeContrast(code);
   // sandbox="" で scripts/popups/forms すべて無効化。CSP metaでsandbox非対応ブラウザに対する二重防御を入れる
-  const srcDoc = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:#222;background:#fff;}</style></head><body>${code}</body></html>`;
+  const srcDoc = buildPreviewSrcDoc(code, theme);
   return (
     <div className={styles.htmlPreview}>
       {show && (
@@ -948,7 +959,7 @@ function HtmlPreview({ code }: { code: string }) {
           className={styles.previewFrame}
           sandbox=""
           srcDoc={srcDoc}
-          title="HTMLプレビュー"
+          title={`HTMLプレビュー（${theme === "dark" ? "ダーク" : "ライト"}）`}
         />
       )}
       <div className={styles.previewBar}>
@@ -960,8 +971,34 @@ function HtmlPreview({ code }: { code: string }) {
         >
           {show ? "プレビューを閉じる" : "プレビューを表示"}
         </button>
+        <PreviewThemeSwitch value={theme} onChange={setTheme} />
         {wcag && <ContrastBadge wcag={wcag} />}
       </div>
+    </div>
+  );
+}
+
+function PreviewThemeSwitch({ value, onChange }: { value: PreviewTheme; onChange: (t: PreviewTheme) => void }) {
+  return (
+    <div className={styles.themeSwitch} role="group" aria-label="プレビューテーマ切替">
+      <button
+        type="button"
+        className={styles.themeBtn}
+        data-active={value === "light"}
+        aria-pressed={value === "light"}
+        onClick={() => onChange("light")}
+      >
+        Light
+      </button>
+      <button
+        type="button"
+        className={styles.themeBtn}
+        data-active={value === "dark"}
+        aria-pressed={value === "dark"}
+        onClick={() => onChange("dark")}
+      >
+        Dark
+      </button>
     </div>
   );
 }

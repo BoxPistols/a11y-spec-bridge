@@ -1022,6 +1022,34 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+.themeSwitch {
+  display: inline-flex;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.themeBtn {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 5px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink2);
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: background .15s ease, color .15s ease;
+}
+.themeBtn:hover:not([data-active="true"]) {
+  color: var(--ink);
+}
+.themeBtn[data-active="true"] {
+  background: var(--bg);
+  color: var(--ink);
+}
+.themeBtn + .themeBtn {
+  border-left: 1px solid var(--border2);
+}
 .wcagBadge {
   display: inline-flex;
   align-items: center;
