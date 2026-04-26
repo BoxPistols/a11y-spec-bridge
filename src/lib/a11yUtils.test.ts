@@ -23,6 +23,18 @@ describe("relativeLuminance", () => {
     expect(l).toBeGreaterThan(0.2);
     expect(l).toBeLessThan(0.23);
   });
+
+  it("不正なhex (#zzz) は throw する（NaN伝播防止）", () => {
+    expect(() => relativeLuminance("#zzz")).toThrow(/Invalid hex/);
+  });
+
+  it("空文字も throw する", () => {
+    expect(() => relativeLuminance("")).toThrow(/Invalid hex/);
+  });
+
+  it("rgb()形式 など hex 以外も throw する", () => {
+    expect(() => relativeLuminance("rgb(255,0,0)")).toThrow(/Invalid hex/);
+  });
 });
 
 describe("contrastRatio", () => {
