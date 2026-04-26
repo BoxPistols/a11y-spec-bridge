@@ -5,7 +5,7 @@
  * ユーザー分類:
  *   自分のAPIキー → 無制限
  *   招待コードあり → RATE_LIMIT_INVITED/日（デフォルト30）
- *   招待コードなし → RATE_LIMIT_PUBLIC/日（デフォルト10）
+ *   招待コードなし → RATE_LIMIT_PUBLIC/日（デフォルト30）
  */
 
 import { Redis } from "@upstash/redis";
@@ -13,7 +13,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { NextRequest } from "next/server";
 
 // ── 定数 ─────────────────────────────────────────────
-const LIMIT_PUBLIC  = parseInt(process.env.RATE_LIMIT_PUBLIC  ?? "10", 10);
+const LIMIT_PUBLIC  = parseInt(process.env.RATE_LIMIT_PUBLIC  ?? "30", 10);
 const LIMIT_INVITED = parseInt(process.env.RATE_LIMIT_INVITED ?? "30", 10);
 
 // ── シングルトン ─────────────────────────────────────
