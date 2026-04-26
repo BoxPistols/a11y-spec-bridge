@@ -24,6 +24,7 @@ export function judgeContrast(html: string): WCAGResult | null {
 export type PreviewTheme = "light" | "dark" | "forced-colors";
 
 // テーマ別ルックアップ。forced-colors は CSS system colors で色情報を強制剥離（WCAG 1.4.11 準拠）
+// description はボタンの title 属性に使用（forced-colors の擬似再現性を明示するため）
 export const THEME_STYLES: Record<PreviewTheme, {
   label: string;
   titleSuffix: string;
@@ -31,6 +32,7 @@ export const THEME_STYLES: Record<PreviewTheme, {
   bodyBg: string;
   bodyFg: string;
   extraCss: string;
+  description?: string;
 }> = {
   light: {
     label: "Light",
@@ -56,6 +58,7 @@ export const THEME_STYLES: Record<PreviewTheme, {
     bodyFg: "CanvasText",
     // 全要素の背景画像・影を剥がし system color に置換、操作要素は ButtonFace/ButtonText + 1px border
     extraCss: "*{background-image:none!important;box-shadow:none!important;text-shadow:none!important;background-color:Canvas!important;color:CanvasText!important;border-color:CanvasText!important;}button,[role=button],a,input,select,textarea{background-color:ButtonFace!important;color:ButtonText!important;border:1px solid ButtonText!important;}",
+    description: "Windows ハイコントラスト擬似（実 OS 挙動と完全一致しません。DevTools の Rendering → Emulate forced-colors: active で実環境と比較してください）",
   },
 };
 
