@@ -1016,6 +1016,37 @@
   border-color: var(--accent);
   color: var(--ink);
 }
+.previewBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.wcagBadge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--ink2);
+  letter-spacing: .02em;
+}
+.wcagBadge[data-tier="pass"] {
+  color: var(--a11y);
+  background: var(--a11y-bg);
+  border-color: var(--a11y);
+}
+.wcagBadge[data-tier="large"] {
+  color: var(--ink2);
+}
+.wcagBadge[data-tier="fail"] {
+  color: var(--err);
+  background: var(--surface);
+  border-color: var(--err);
+}
 
 /* ソース */
 .sourcesWrap {
