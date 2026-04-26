@@ -27,7 +27,7 @@ const SOURCE_META: Record<SourceTag, { label: string; color: string; bg: string 
   WCAG:      { label: "WCAG 2.2",  color: "var(--a11y)",   bg: "var(--a11y-bg)"   },
   "WAI-ARIA":{ label: "WAI-ARIA",  color: "var(--aria)",   bg: "var(--aria-bg)"   },
   CUSTOM:    { label: "カスタム",  color: "var(--custom)", bg: "var(--custom-bg)" },
-  CURATED:   { label: "精査済",   color: "var(--curated)", bg: "var(--curated-bg)" },
+  CURATED:   { label: "内部精査",   color: "var(--curated)", bg: "var(--curated-bg)" },
 };
 
 // ── チャット履歴管理 ─────────────────────────────────
@@ -433,7 +433,7 @@ export default function Page() {
 
         {/* ドキュメントソース */}
         <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>ナレッジソース <HelpTip text="回答の根拠となる仕様データベースです。MDN / WCAG / WAI-ARIA の仕様が事前に埋め込まれています。" /></div>
+          <div className={styles.sideLabel}>ナレッジソース <HelpTip text="回答の根拠となる仕様データベースです。MDN（Mozilla）/ WCAG 2.2（W3C）/ WAI-ARIA（W3C）の公式仕様、および 内部精査（SpecBridge 内部で精査した UX レビュー用パターン 28件、第三者ガイド由来ではありません）が事前に埋め込まれています。" /></div>
           <div className={styles.sourceList}>
             {(["MDN", "WCAG", "WAI-ARIA", "CURATED"] as SourceTag[]).map(s => (
               <div key={s} className={styles.sourceRow} style={{ "--c": SOURCE_META[s].color } as React.CSSProperties}>
