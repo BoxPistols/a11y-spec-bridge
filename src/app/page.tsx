@@ -21,6 +21,7 @@ import {
   type PreviewTheme,
   type PreviewViewport,
 } from "../lib/htmlPreview";
+import { buildAriaSnapshot, formatAriaSnapshot } from "../lib/ariaSnapshot";
 import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
@@ -933,9 +934,12 @@ function HtmlPreview({ code }: { code: string }) {
   const [show, setShow] = useState(true);
   const [theme, setTheme] = useState<PreviewTheme>("light");
   const [viewport, setViewport] = useState<PreviewViewport>("desktop");
+  const [showAria, setShowAria] = useState(false);
   const wcag = judgeContrast(code);
   // sandbox="" で scripts/popups/forms すべて無効化。CSP metaでsandbox非対応ブラウザに対する二重防御を入れる
   const srcDoc = buildPreviewSrcDoc(code, theme);
+  // ARIA snapshot は showAria 時のみ計算（DOMParser 呼び出しコスト回避）
+  const ariaText = showAria ? formatAriaSnapshot(buildAriaSnapshot(code)) : "";
   return (
     <div className={styles.htmlPreview}>
       {show && (
@@ -948,6 +952,11 @@ function HtmlPreview({ code }: { code: string }) {
           />
         </div>
       )}
+      {show && showAria && (
+        <pre className={styles.ariaSnapshot} aria-label="ARIA snapshot（スクリーンリーダー読み上げ簡易再現）">
+          {ariaText || "（読み上げ対象の要素が検出されませんでした）"}
+        </pre>
+      )}
       <div className={styles.previewBar}>
         <button
           type="button"
@@ -959,6 +968,15 @@ function HtmlPreview({ code }: { code: string }) {
         </button>
         <PreviewThemeSwitch value={theme} onChange={setTheme} />
         <PreviewViewportSwitch value={viewport} onChange={setViewport} />
+        <button
+          type="button"
+          className={styles.previewBtn}
+          onClick={() => setShowAria(s => !s)}
+          aria-pressed={showAria}
+          title="スクリーンリーダー読み上げの簡易再現（role + accessible name）を表示"
+        >
+          {showAria ? "ARIA を閉じる" : "ARIA を表示"}
+        </button>
         {wcag && theme !== "forced-colors" && <ContrastBadge wcag={wcag} />}
       </div>
     </div>

@@ -1006,6 +1006,20 @@
   border-radius: var(--radius);
   background: #fff;
 }
+.ariaSnapshot {
+  margin: 0 0 8px;
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--surface2);
+  color: var(--ink);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 300px;
+}
 .previewBtn {
   display: inline-flex;
   align-items: center;
