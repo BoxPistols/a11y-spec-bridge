@@ -3,7 +3,9 @@ import {
   buildPreviewSrcDoc,
   extractFirstColorPair,
   judgeContrast,
+  PREVIEW_VIEWPORTS,
   THEME_STYLES,
+  VIEWPORT_STYLES,
 } from "./htmlPreview";
 
 describe("extractFirstColorPair", () => {
@@ -116,5 +118,24 @@ describe("THEME_STYLES", () => {
   it("forced-colors の label は 'Forced'、titleSuffix は '強制色'", () => {
     expect(THEME_STYLES["forced-colors"].label).toBe("Forced");
     expect(THEME_STYLES["forced-colors"].titleSuffix).toBe("強制色");
+  });
+});
+
+describe("VIEWPORT_STYLES", () => {
+  it("各ビューポートに label と ariaLabel が定義されている", () => {
+    for (const vp of PREVIEW_VIEWPORTS) {
+      expect(VIEWPORT_STYLES[vp].label).toBeTruthy();
+      expect(VIEWPORT_STYLES[vp].ariaLabel).toBeTruthy();
+    }
+  });
+
+  it("ariaLabel に幅情報を含む（375px / 768px / 100%）", () => {
+    expect(VIEWPORT_STYLES.mobile.ariaLabel).toContain("375px");
+    expect(VIEWPORT_STYLES.tablet.ariaLabel).toContain("768px");
+    expect(VIEWPORT_STYLES.desktop.ariaLabel).toContain("100%");
+  });
+
+  it("PREVIEW_VIEWPORTS の順序は mobile → tablet → desktop", () => {
+    expect(PREVIEW_VIEWPORTS).toEqual(["mobile", "tablet", "desktop"]);
   });
 });

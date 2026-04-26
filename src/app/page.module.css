@@ -990,11 +990,18 @@
 .htmlPreview {
   margin: -.5em 0 1em;
 }
+.previewWrap {
+  margin-bottom: 8px;
+  /* viewport 切替時に max-width のみアニメーション。iframe の再ロードは発生しない */
+  transition: max-width .2s ease;
+}
+.previewWrap[data-viewport="mobile"] { max-width: 375px; }
+.previewWrap[data-viewport="tablet"] { max-width: 768px; }
+.previewWrap[data-viewport="desktop"] { max-width: 100%; }
 .previewFrame {
   display: block;
   width: 100%;
   min-height: 180px;
-  margin-bottom: 8px;
   border: 1px solid var(--border2);
   border-radius: var(--radius);
   background: #fff;
