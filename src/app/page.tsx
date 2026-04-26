@@ -935,14 +935,49 @@ function judgeContrast(html: string): WCAGResult | null {
   return pair ? wcagJudge(pair.fg, pair.bg) : null;
 }
 
-type PreviewTheme = "light" | "dark";
+type PreviewTheme = "light" | "dark" | "forced-colors";
 
-// iframe body のデフォルト bg/fg のみを切替。HTML 内の明示色は上書きしない
-// （これによりデザイナーは「明示色がダーク背景でも視認できるか」を確認できる）
+// テーマ別ルックアップ。forced-colors は CSS system colors で色情報を強制剥離（WCAG 1.4.11 準拠）
+const THEME_STYLES: Record<PreviewTheme, {
+  label: string;
+  titleSuffix: string;
+  colorScheme: string;
+  bodyBg: string;
+  bodyFg: string;
+  extraCss: string;
+}> = {
+  light: {
+    label: "Light",
+    titleSuffix: "ライト",
+    colorScheme: "light",
+    bodyBg: "#ffffff",
+    bodyFg: "#222222",
+    extraCss: "",
+  },
+  dark: {
+    label: "Dark",
+    titleSuffix: "ダーク",
+    colorScheme: "dark",
+    bodyBg: "#1a1a1a",
+    bodyFg: "#e0e0e0",
+    extraCss: "",
+  },
+  "forced-colors": {
+    label: "Forced",
+    titleSuffix: "強制色",
+    colorScheme: "light dark",
+    bodyBg: "Canvas",
+    bodyFg: "CanvasText",
+    // 全要素の背景画像・影を剥がし system color に置換、操作要素は ButtonFace/ButtonText + 1px border
+    extraCss: "*{background-image:none!important;box-shadow:none!important;text-shadow:none!important;background-color:Canvas!important;color:CanvasText!important;border-color:CanvasText!important;}button,[role=button],a,input,select,textarea{background-color:ButtonFace!important;color:ButtonText!important;border:1px solid ButtonText!important;}",
+  },
+};
+
+// iframe body のデフォルト bg/fg のみを切替。HTML 内の明示色は基本上書きしない
+// （forced-colors のみ * セレクタで強制剥離して Windows ハイコントラスト相当を擬似再現）
 function buildPreviewSrcDoc(code: string, theme: PreviewTheme): string {
-  const bg = theme === "dark" ? "#1a1a1a" : "#ffffff";
-  const fg = theme === "dark" ? "#e0e0e0" : "#222222";
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:"><style>:root{color-scheme:${theme};}body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:${fg};background:${bg};}</style></head><body>${code}</body></html>`;
+  const t = THEME_STYLES[theme];
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:"><style>:root{color-scheme:${t.colorScheme};}body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:${t.bodyFg};background:${t.bodyBg};}${t.extraCss}</style></head><body>${code}</body></html>`;
 }
 
 function HtmlPreview({ code }: { code: string }) {
@@ -959,7 +994,7 @@ function HtmlPreview({ code }: { code: string }) {
           className={styles.previewFrame}
           sandbox=""
           srcDoc={srcDoc}
-          title={`HTMLプレビュー（${theme === "dark" ? "ダーク" : "ライト"}）`}
+          title={`HTMLプレビュー（${THEME_STYLES[theme].titleSuffix}）`}
         />
       )}
       <div className={styles.previewBar}>
@@ -972,33 +1007,29 @@ function HtmlPreview({ code }: { code: string }) {
           {show ? "プレビューを閉じる" : "プレビューを表示"}
         </button>
         <PreviewThemeSwitch value={theme} onChange={setTheme} />
-        {wcag && <ContrastBadge wcag={wcag} />}
+        {wcag && theme !== "forced-colors" && <ContrastBadge wcag={wcag} />}
       </div>
     </div>
   );
 }
 
+const PREVIEW_THEMES: readonly PreviewTheme[] = ["light", "dark", "forced-colors"] as const;
+
 function PreviewThemeSwitch({ value, onChange }: { value: PreviewTheme; onChange: (t: PreviewTheme) => void }) {
   return (
     <div className={styles.themeSwitch} role="group" aria-label="プレビューテーマ切替">
-      <button
-        type="button"
-        className={styles.themeBtn}
-        data-active={value === "light"}
-        aria-pressed={value === "light"}
-        onClick={() => onChange("light")}
-      >
-        Light
-      </button>
-      <button
-        type="button"
-        className={styles.themeBtn}
-        data-active={value === "dark"}
-        aria-pressed={value === "dark"}
-        onClick={() => onChange("dark")}
-      >
-        Dark
-      </button>
+      {PREVIEW_THEMES.map(theme => (
+        <button
+          key={theme}
+          type="button"
+          className={styles.themeBtn}
+          data-active={value === theme}
+          aria-pressed={value === theme}
+          onClick={() => onChange(theme)}
+        >
+          {THEME_STYLES[theme].label}
+        </button>
+      ))}
     </div>
   );
 }
