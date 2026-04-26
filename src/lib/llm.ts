@@ -51,12 +51,12 @@ function buildSystem(role: UserRole): string {
 
 論点が「コントラスト」のとき:
 ## ❌ Bad
-ボタンの前景/背景コントラスト比が 1.4:1 で WCAG AA (4.5:1) を満たさない。
+ボタンの前景/背景コントラスト比が 1.53:1 で WCAG AA (4.5:1) を満たさない。
 \`\`\`html
 <button style="background:#888;color:#aaa;padding:8px 16px;border:0;border-radius:4px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Submit</button>
 \`\`\`
 ## ✅ Good
-コントラスト比 8.6:1 で AAA を満たす。
+コントラスト比 8.39:1 で AAA を満たす。
 \`\`\`html
 <button style="background:#1a4d8f;color:#fff;padding:8px 16px;border:0;border-radius:4px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Submit</button>
 \`\`\`
