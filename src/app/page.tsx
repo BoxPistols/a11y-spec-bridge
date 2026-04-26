@@ -10,6 +10,7 @@ import Link from "next/link";
 import { SUGGEST_GROUPS, SUGGEST_THEMES, RECOMMEND } from "../lib/suggests";
 import { ICO, sz } from "../lib/icons";
 import { mdToPlain, downloadText, exportToFile, buildExportPayload, validateImport, MAX_SESSIONS } from "../lib/helpers";
+import { wcagJudge, type WCAGResult } from "../lib/a11yUtils";
 import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
@@ -917,9 +918,27 @@ function extractText(node: unknown): string {
   return "";
 }
 
+// インラインstyleの最初の color と background(-color) を抽出。hex形式のみ対応
+const HEX_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+function extractFirstColorPair(html: string): { fg: string; bg: string } | null {
+  const styleMatch = html.match(/style=(?:"([^"]*)"|'([^']*)')/);
+  if (!styleMatch) return null;
+  const style = styleMatch[1] ?? styleMatch[2] ?? "";
+  const fg = style.match(/(?:^|[;\s])color\s*:\s*([^;]+)/i)?.[1].trim();
+  const bg = style.match(/(?:^|[;\s])background(?:-color)?\s*:\s*([^;\s]+)/i)?.[1].trim();
+  if (!fg || !bg || !HEX_RE.test(fg) || !HEX_RE.test(bg)) return null;
+  return { fg, bg };
+}
+
+function judgeContrast(html: string): WCAGResult | null {
+  const pair = extractFirstColorPair(html);
+  return pair ? wcagJudge(pair.fg, pair.bg) : null;
+}
+
 function HtmlPreview({ code }: { code: string }) {
   // デザイナーが視覚情報をすぐ見られるよう初期表示はON。ボタンで折り畳み可能
   const [show, setShow] = useState(true);
+  const wcag = judgeContrast(code);
   // sandbox="" で scripts/popups/forms すべて無効化。CSP metaでsandbox非対応ブラウザに対する二重防御を入れる
   const srcDoc = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:#222;background:#fff;}</style></head><body>${code}</body></html>`;
   return (
@@ -932,15 +951,37 @@ function HtmlPreview({ code }: { code: string }) {
           title="HTMLプレビュー"
         />
       )}
-      <button
-        type="button"
-        className={styles.previewBtn}
-        onClick={() => setShow(s => !s)}
-        aria-expanded={show}
-      >
-        {show ? "プレビューを閉じる" : "プレビューを表示"}
-      </button>
+      <div className={styles.previewBar}>
+        <button
+          type="button"
+          className={styles.previewBtn}
+          onClick={() => setShow(s => !s)}
+          aria-expanded={show}
+        >
+          {show ? "プレビューを閉じる" : "プレビューを表示"}
+        </button>
+        {wcag && <ContrastBadge wcag={wcag} />}
+      </div>
     </div>
+  );
+}
+
+function ContrastBadge({ wcag }: { wcag: WCAGResult }) {
+  // AA通常テキストを基準に pass/large/fail を区別
+  const tier: "pass" | "large" | "fail" =
+    wcag.AA_normal ? "pass" : wcag.AA_large ? "large" : "fail";
+  const label =
+    tier === "pass"
+      ? wcag.AAA_normal ? "AAA pass" : "AA pass"
+      : tier === "large" ? "AA large only" : "fail";
+  return (
+    <span
+      className={styles.wcagBadge}
+      data-tier={tier}
+      title="WCAG 2.1 アルゴリズムによる実測値"
+    >
+      {wcag.ratio}:1 · {label}
+    </span>
   );
 }
 

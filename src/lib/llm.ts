@@ -44,19 +44,21 @@ function buildSystem(role: UserRole): string {
 - フォントは system stack を明示: font-family: -apple-system, BlinkMacSystemFont, sans-serif
 - 論点に集中した最小デモにする（例: コントラスト比の話ならボタン1個、フォーカスの話なら入力欄1個）
 - 同じ要素・同じ文言で Bad と Good を作り、差分が一目で分かるようにする
-- 数値根拠を併記する（例: "コントラスト比 4.8:1 (WCAG AA pass)"、"44x44pt (iOS HIG 最小)"、"48dp (Material 最小)"）
+- コントラスト比の数値は書かない。色指定を #hex 形式で書けば、UI 側で WCAG 2.1 アルゴリズムにより自動計算され "5.2:1 · AA pass" のようなバッジが付く。代わりに「なぜ NG / OK か」の理由を 1〜2 文で書く
+- 色指定は #hex 形式（rgb()/hsl()/色名は使わない。バッジ計算ができないため）
+- タッチターゲット等の物理寸法は数値併記してよい（例: "44x44pt (iOS HIG 最小)"、"48dp (Material 最小)"）
 - スタイルは簡潔に。装飾的な要素は加えない
 
 # few-shot 例（フォーマット参考）
 
 論点が「コントラスト」のとき:
 ## ❌ Bad
-ボタンの前景/背景コントラスト比が 1.53:1 で WCAG AA (4.5:1) を満たさない。
+ボタンの前景/背景コントラストが弱く、低視力ユーザーには文字が判別しづらい。
 \`\`\`html
 <button style="background:#888;color:#aaa;padding:8px 16px;border:0;border-radius:4px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Submit</button>
 \`\`\`
 ## ✅ Good
-コントラスト比 8.39:1 で AAA を満たす。
+深い青と白で十分なコントラストを確保し、屋外や疲労時でも読める。
 \`\`\`html
 <button style="background:#1a4d8f;color:#fff;padding:8px 16px;border:0;border-radius:4px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">Submit</button>
 \`\`\`
