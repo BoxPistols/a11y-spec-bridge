@@ -1,12 +1,15 @@
-// canonical: github.com/.../local-ui-builder/src/lib/a11yUtils.ts
-// copied: 2026-04-26
-// 配布方針: モノレポ化せず単一ファイルコピペ。canonical を更新したら同テストケースで再検証して同期。
+// canonical: github.com/BoxPistols/local-ui-builder/src/lib/a11yUtils.ts
+// copied: 2026-04-27
+// 配布方針: モノレポ化せず単一ファイルコピペ。コピー時は canonical URL + コピー日付をヘッダに残し、canonical を更新したら同テストケースで再検証して同期。
 // 依存ゼロ・純粋関数のみ。SpecBridge / ux-review-plugin で同テストケース通せば一致担保。
 
-/** WCAG 2.1 相対輝度（hex → 0..1） */
+/** WCAG 2.1 相対輝度（hex → 0..1）。不正なhexは throw する（NaN伝播による無音バグ防止） */
 export function relativeLuminance(hex: string): number {
   const normalized = normalizeHex(hex);
-  const rgb = (normalized.match(/.{2}/g) ?? []).map((h) => {
+  if (!/^[0-9a-f]{6}$/.test(normalized)) {
+    throw new Error(`Invalid hex color: ${hex}`);
+  }
+  const rgb = normalized.match(/.{2}/g)!.map((h) => {
     const c = parseInt(h, 16) / 255;
     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   });
