@@ -17,6 +17,7 @@ docs/
 
 # ビルド成果物
 .scripts-dist/
+tsconfig.tsbuildinfo
 
 # OS
 .DS_Store
