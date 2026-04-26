@@ -990,6 +990,15 @@
 .htmlPreview {
   margin: -.5em 0 1em;
 }
+.previewFrame {
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: #fff;
+}
 .previewBtn {
   display: inline-flex;
   align-items: center;
@@ -1006,15 +1015,6 @@
 .previewBtn:hover {
   border-color: var(--accent);
   color: var(--ink);
-}
-.previewFrame {
-  display: block;
-  width: 100%;
-  min-height: 180px;
-  margin-top: 8px;
-  border: 1px solid var(--border2);
-  border-radius: var(--radius);
-  background: #fff;
 }
 
 /* ソース */

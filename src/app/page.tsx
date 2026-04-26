@@ -918,19 +918,12 @@ function extractText(node: unknown): string {
 }
 
 function HtmlPreview({ code }: { code: string }) {
-  const [show, setShow] = useState(false);
+  // デザイナーが視覚情報をすぐ見られるよう初期表示はON。ボタンで折り畳み可能
+  const [show, setShow] = useState(true);
   // sandbox="" で scripts/popups/forms すべて無効化。CSP metaでsandbox非対応ブラウザに対する二重防御を入れる
   const srcDoc = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:#222;background:#fff;}</style></head><body>${code}</body></html>`;
   return (
     <div className={styles.htmlPreview}>
-      <button
-        type="button"
-        className={styles.previewBtn}
-        onClick={() => setShow(s => !s)}
-        aria-expanded={show}
-      >
-        {show ? "プレビューを閉じる" : "プレビューを表示"}
-      </button>
       {show && (
         <iframe
           className={styles.previewFrame}
@@ -939,6 +932,14 @@ function HtmlPreview({ code }: { code: string }) {
           title="HTMLプレビュー"
         />
       )}
+      <button
+        type="button"
+        className={styles.previewBtn}
+        onClick={() => setShow(s => !s)}
+        aria-expanded={show}
+      >
+        {show ? "プレビューを閉じる" : "プレビューを表示"}
+      </button>
     </div>
   );
 }
