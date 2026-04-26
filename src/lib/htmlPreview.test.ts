@@ -119,6 +119,13 @@ describe("THEME_STYLES", () => {
     expect(THEME_STYLES["forced-colors"].label).toBe("Forced");
     expect(THEME_STYLES["forced-colors"].titleSuffix).toBe("強制色");
   });
+
+  it("forced-colors のみ description（擬似再現の注釈）が定義されている", () => {
+    expect(THEME_STYLES.light.description).toBeUndefined();
+    expect(THEME_STYLES.dark.description).toBeUndefined();
+    expect(THEME_STYLES["forced-colors"].description).toBeTruthy();
+    expect(THEME_STYLES["forced-colors"].description).toContain("擬似");
+  });
 });
 
 describe("VIEWPORT_STYLES", () => {

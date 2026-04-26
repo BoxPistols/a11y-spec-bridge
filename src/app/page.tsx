@@ -975,6 +975,7 @@ function PreviewThemeSwitch({ value, onChange }: { value: PreviewTheme; onChange
           className={styles.themeBtn}
           data-active={value === theme}
           aria-pressed={value === theme}
+          title={THEME_STYLES[theme].description}
           onClick={() => onChange(theme)}
         >
           {THEME_STYLES[theme].label}
