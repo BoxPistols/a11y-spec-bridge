@@ -15,8 +15,11 @@ import {
   buildPreviewSrcDoc,
   judgeContrast,
   PREVIEW_THEMES,
+  PREVIEW_VIEWPORTS,
   THEME_STYLES,
+  VIEWPORT_STYLES,
   type PreviewTheme,
+  type PreviewViewport,
 } from "../lib/htmlPreview";
 import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
@@ -929,18 +932,21 @@ function HtmlPreview({ code }: { code: string }) {
   // デザイナーが視覚情報をすぐ見られるよう初期表示はON。ボタンで折り畳み可能
   const [show, setShow] = useState(true);
   const [theme, setTheme] = useState<PreviewTheme>("light");
+  const [viewport, setViewport] = useState<PreviewViewport>("desktop");
   const wcag = judgeContrast(code);
   // sandbox="" で scripts/popups/forms すべて無効化。CSP metaでsandbox非対応ブラウザに対する二重防御を入れる
   const srcDoc = buildPreviewSrcDoc(code, theme);
   return (
     <div className={styles.htmlPreview}>
       {show && (
-        <iframe
-          className={styles.previewFrame}
-          sandbox=""
-          srcDoc={srcDoc}
-          title={`HTMLプレビュー（${THEME_STYLES[theme].titleSuffix}）`}
-        />
+        <div className={styles.previewWrap} data-viewport={viewport}>
+          <iframe
+            className={styles.previewFrame}
+            sandbox=""
+            srcDoc={srcDoc}
+            title={`HTMLプレビュー（${THEME_STYLES[theme].titleSuffix}・${VIEWPORT_STYLES[viewport].label}）`}
+          />
+        </div>
       )}
       <div className={styles.previewBar}>
         <button
@@ -952,6 +958,7 @@ function HtmlPreview({ code }: { code: string }) {
           {show ? "プレビューを閉じる" : "プレビューを表示"}
         </button>
         <PreviewThemeSwitch value={theme} onChange={setTheme} />
+        <PreviewViewportSwitch value={viewport} onChange={setViewport} />
         {wcag && theme !== "forced-colors" && <ContrastBadge wcag={wcag} />}
       </div>
     </div>
@@ -971,6 +978,26 @@ function PreviewThemeSwitch({ value, onChange }: { value: PreviewTheme; onChange
           onClick={() => onChange(theme)}
         >
           {THEME_STYLES[theme].label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PreviewViewportSwitch({ value, onChange }: { value: PreviewViewport; onChange: (v: PreviewViewport) => void }) {
+  return (
+    <div className={styles.themeSwitch} role="group" aria-label="プレビュー幅切替">
+      {PREVIEW_VIEWPORTS.map(vp => (
+        <button
+          key={vp}
+          type="button"
+          className={styles.themeBtn}
+          data-active={value === vp}
+          aria-pressed={value === vp}
+          aria-label={VIEWPORT_STYLES[vp].ariaLabel}
+          onClick={() => onChange(vp)}
+        >
+          {VIEWPORT_STYLES[vp].label}
         </button>
       ))}
     </div>

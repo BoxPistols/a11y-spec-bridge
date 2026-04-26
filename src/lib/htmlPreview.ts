@@ -67,3 +67,14 @@ export function buildPreviewSrcDoc(code: string, theme: PreviewTheme): string {
 }
 
 export const PREVIEW_THEMES: readonly PreviewTheme[] = ["light", "dark", "forced-colors"] as const;
+
+export type PreviewViewport = "mobile" | "tablet" | "desktop";
+
+// ビューポート別ルックアップ。max-width は CSS 側 (data-viewport 属性) で適用
+export const VIEWPORT_STYLES: Record<PreviewViewport, { label: string; ariaLabel: string }> = {
+  mobile: { label: "Mobile", ariaLabel: "モバイル幅 375px" },
+  tablet: { label: "Tablet", ariaLabel: "タブレット幅 768px" },
+  desktop: { label: "Desktop", ariaLabel: "デスクトップ幅 100%" },
+};
+
+export const PREVIEW_VIEWPORTS: readonly PreviewViewport[] = ["mobile", "tablet", "desktop"] as const;
