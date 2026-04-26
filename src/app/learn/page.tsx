@@ -143,11 +143,52 @@ const SIM_STEPS = [
   { id: "parse", label: "回答パース → レスポンス", icon: "✓", runLabel: "パース中...", doneLabel: "完了", delay: 200 },
 ];
 
-const SAMPLE_ANSWERS = [
-  "WCAG 2.2 達成基準 1.4.3「コントラスト（最低限）」では、テキストおよび文字画像のコントラスト比は 4.5:1 以上を要求しています。大きなテキスト（18pt以上 or 14pt太字以上）では 3:1 以上で可です。",
-  "WAI-ARIA の role=\"button\" は、非インタラクティブ要素（divやspan）をボタンとして振る舞わせるために使用します。tabindex=\"0\" と keydown ハンドラ（Enter/Space）の追加も必要です。",
-  "MDN によると、CSS の prefers-reduced-motion メディアクエリを使えば、アニメーション不要のユーザー設定を検出できます。WCAG 2.3.3 ではアニメーション無効化の手段提供を推奨しています。",
+// 質問キーワード → 回答 + 出典 のセット。質問内容と出典がずれないよう紐付ける
+type SimSource = { tag: string; section: string };
+type SimSample = { keywords: string[]; answer: string; sources: SimSource[] };
+
+const SIM_SAMPLES: SimSample[] = [
+  {
+    keywords: ["コントラスト", "contrast", "4.5", "視認"],
+    answer: "WCAG 2.2 達成基準 1.4.3「コントラスト（最低限）」では、テキストおよび文字画像のコントラスト比は 4.5:1 以上を要求しています。大きなテキスト（18pt以上 or 14pt太字以上）では 3:1 以上で可です。",
+    sources: [
+      { tag: "WCAG 2.2", section: "1.4.3 コントラスト" },
+      { tag: "WCAG 2.2", section: "1.4.11 非テキストコントラスト" },
+      { tag: "MDN", section: "color-contrast()" },
+    ],
+  },
+  {
+    keywords: ["role", "ボタン", "button", "aria", "tabindex"],
+    answer: "WAI-ARIA の role=\"button\" は、非インタラクティブ要素（divやspan）をボタンとして振る舞わせるために使用します。tabindex=\"0\" と keydown ハンドラ（Enter/Space）の追加も必要です。",
+    sources: [
+      { tag: "WAI-ARIA", section: "role=button" },
+      { tag: "MDN", section: "ARIA: button role" },
+      { tag: "WCAG 2.2", section: "4.1.2 名前・役割・値" },
+    ],
+  },
+  {
+    keywords: ["motion", "アニメ", "reduced", "動き"],
+    answer: "MDN によると、CSS の prefers-reduced-motion メディアクエリを使えば、アニメーション不要のユーザー設定を検出できます。WCAG 2.3.3 ではアニメーション無効化の手段提供を推奨しています。",
+    sources: [
+      { tag: "MDN", section: "@media (prefers-reduced-motion)" },
+      { tag: "WCAG 2.2", section: "2.3.3 アニメーション（操作による）" },
+    ],
+  },
+  {
+    keywords: ["フォーカス", "focus", "outline"],
+    answer: "WCAG 2.2 達成基準 2.4.7「フォーカスの可視」では、キーボード操作可能な要素にフォーカスインジケーターが視覚的に提示されることを要求しています。outline:none で消すのは原則 NG で、:focus-visible で代替スタイルを当てる方法が推奨されます。",
+    sources: [
+      { tag: "WCAG 2.2", section: "2.4.7 フォーカスの可視" },
+      { tag: "WCAG 2.2", section: "2.4.11 フォーカスの外観" },
+      { tag: "MDN", section: ":focus-visible" },
+    ],
+  },
 ];
+
+function findSample(question: string): SimSample {
+  const q = question.toLowerCase();
+  return SIM_SAMPLES.find(s => s.keywords.some(k => q.includes(k.toLowerCase()))) ?? SIM_SAMPLES[0];
+}
 
 // ── コード逆引き定義 ──
 const CODE_REFS = [
@@ -294,12 +335,15 @@ function StepCard({ step }: { step: FlowStep }) {
 }
 
 function SimPanel() {
+  const [question, setQuestion] = useState("ボタンのコントラスト比はいくつ必要？");
   const [running, setRunning] = useState(false);
   const [stepStates, setStepStates] = useState<Record<string, "idle" | "running" | "done">>({});
   const [stepLabels, setStepLabels] = useState<Record<string, string>>({});
-  const [output, setOutput] = useState<string | null>(null);
+  // 質問内容にマッチした回答と出典をセットで保持。OUTPUT表示と SOURCES表示で同じ sample を参照する
+  const [output, setOutput] = useState<SimSample | null>(null);
 
   const runSim = async () => {
+    if (!question.trim()) return;
     setRunning(true);
     setOutput(null);
     const newStates: Record<string, "idle" | "running" | "done"> = {};
@@ -320,7 +364,7 @@ function SimPanel() {
       setStepLabels({ ...newLabels });
     }
 
-    setOutput(SAMPLE_ANSWERS[Math.floor(Math.random() * SAMPLE_ANSWERS.length)]);
+    setOutput(findSample(question));
     setRunning(false);
   };
 
@@ -334,8 +378,14 @@ function SimPanel() {
         </div>
         <div className={styles.simBody}>
           <div className={styles.simInput}>
-            <input type="text" placeholder="質問を入力（例: ボタンのコントラスト比は？）" defaultValue="ボタンのコントラスト比はいくつ必要？" />
-            <button className={styles.simBtn} onClick={runSim} disabled={running}>▶ 実行</button>
+            <input
+              type="text"
+              placeholder="質問を入力（例: ボタンのコントラスト比は？）"
+              value={question}
+              onChange={e => setQuestion(e.target.value)}
+              disabled={running}
+            />
+            <button className={styles.simBtn} onClick={runSim} disabled={running || !question.trim()}>▶ 実行</button>
           </div>
           <div className={styles.pipeline}>
             {SIM_STEPS.map((step, i) => (
@@ -352,12 +402,15 @@ function SimPanel() {
           {output && (
             <div className={styles.simOutput}>
               <div className={styles.simOutputLabel}>// OUTPUT</div>
-              <div className={styles.simOutputAnswer}>{output}</div>
+              <div className={styles.simOutputAnswer}>{output.answer}</div>
               <div className={styles.simOutputSources}>
-                <div className={styles.simSourceLabel}>// SOURCES (6件)</div>
-                <div className={styles.simSource}><span className={styles.srcFile}>WCAG 2.2</span><span>1.4.3 コントラスト</span></div>
-                <div className={styles.simSource}><span className={styles.srcFile}>WCAG 2.2</span><span>1.4.11 非テキストコントラスト</span></div>
-                <div className={styles.simSource}><span className={styles.srcFile}>MDN</span><span>color-contrast()</span></div>
+                <div className={styles.simSourceLabel}>// SOURCES ({output.sources.length}件)</div>
+                {output.sources.map((s, i) => (
+                  <div key={i} className={styles.simSource}>
+                    <span className={styles.srcFile}>{s.tag}</span>
+                    <span>{s.section}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
