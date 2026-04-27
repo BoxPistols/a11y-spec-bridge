@@ -23,6 +23,7 @@ import {
 } from "../lib/htmlPreview";
 import { buildAriaSnapshot, formatAriaSnapshot } from "../lib/ariaSnapshot";
 import { extractTabOrder, formatTabOrder } from "../lib/tabOrder";
+import { validateAriaAttrs } from "../lib/ariaValidate";
 import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
@@ -1058,6 +1059,25 @@ function PreviewViewportSwitch({ value, onChange }: { value: PreviewViewport; on
   );
 }
 
+function AriaCheckBadge({ content }: { content: string }) {
+  // L3 Stage 1: AI 回答に含まれる aria-* 属性を WAI-ARIA 1.2/1.3 辞書と照合
+  // 教育目的の Bad ブロック内は除外。total=0 ならバッジ非表示
+  const aria = validateAriaAttrs(content);
+  if (aria.total === 0) return null;
+  const warn = aria.unknown.length > 0;
+  return (
+    <span
+      className={styles.ariaCheckBadge}
+      data-status={warn ? "warn" : "ok"}
+      title={warn
+        ? `未知 ARIA 属性（捏造の疑い）: ${aria.unknown.join(", ")}`
+        : `ARIA 属性 ${aria.valid.length} 種すべて WAI-ARIA 1.2/1.3 に存在`}
+    >
+      ARIA {warn ? `⚠ ${aria.unknown.length}` : `✓ ${aria.valid.length}`}
+    </span>
+  );
+}
+
 function ContrastBadge({ wcag }: { wcag: WCAGResult }) {
   // AA通常テキストを基準に pass/large/fail を区別
   const tier: "pass" | "large" | "fail" =
@@ -1148,6 +1168,7 @@ function MessageBubble({ msg }: { msg: Message }) {
                 {msg.tokens.input}↑ {msg.tokens.output}↓ tokens
               </span>
             )}
+            <AriaCheckBadge content={msg.content} />
             {!msg.error && (
               <div className={styles.aiActions} ref={menuRef}>
                 {/* コピー */}
