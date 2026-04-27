@@ -64,9 +64,19 @@ export const THEME_STYLES: Record<PreviewTheme, {
 
 // iframe body のデフォルト bg/fg のみを切替。HTML 内の明示色は基本上書きしない
 // （forced-colors のみ * セレクタで強制剥離して Windows ハイコントラスト相当を擬似再現）
-export function buildPreviewSrcDoc(code: string, theme: PreviewTheme): string {
+// allowScripts=true 時は CSP に script-src 'unsafe-inline' を追加し、sandbox="allow-scripts" と組み合わせて
+// インラインスクリプト実行を許可する（外部 fetch/connect は connect-src 'none' で封じる）
+export function buildPreviewSrcDoc(
+  code: string,
+  theme: PreviewTheme,
+  options?: { allowScripts?: boolean },
+): string {
   const t = THEME_STYLES[theme];
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:"><style>:root{color-scheme:${t.colorScheme};}body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:${t.bodyFg};background:${t.bodyBg};}${t.extraCss}</style></head><body>${code}</body></html>`;
+  const allowScripts = options?.allowScripts ?? false;
+  const csp = allowScripts
+    ? "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src data:; connect-src 'none'; frame-ancestors 'none'"
+    : "default-src 'none'; style-src 'unsafe-inline'; font-src data:";
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><style>:root{color-scheme:${t.colorScheme};}body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:${t.bodyFg};background:${t.bodyBg};}${t.extraCss}</style></head><body>${code}</body></html>`;
 }
 
 export const PREVIEW_THEMES: readonly PreviewTheme[] = ["light", "dark", "forced-colors"] as const;
