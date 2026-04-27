@@ -107,6 +107,23 @@ describe("buildPreviewSrcDoc", () => {
       expect(doc).toContain("style-src 'unsafe-inline'");
     }
   });
+
+  it("既定では script-src を含まない（scripts 無効）", () => {
+    const doc = buildPreviewSrcDoc("<p>x</p>", "light");
+    expect(doc).not.toContain("script-src");
+  });
+
+  it("allowScripts=true で script-src 'unsafe-inline' と connect-src 'none' を含む", () => {
+    const doc = buildPreviewSrcDoc("<p>x</p>", "light", { allowScripts: true });
+    expect(doc).toContain("script-src 'unsafe-inline'");
+    expect(doc).toContain("connect-src 'none'");
+    expect(doc).toContain("frame-ancestors 'none'");
+  });
+
+  it("allowScripts=false（既定）では connect-src を含まない", () => {
+    const doc = buildPreviewSrcDoc("<p>x</p>", "light", { allowScripts: false });
+    expect(doc).not.toContain("connect-src");
+  });
 });
 
 describe("THEME_STYLES", () => {

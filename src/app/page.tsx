@@ -937,21 +937,29 @@ function HtmlPreview({ code }: { code: string }) {
   const [viewport, setViewport] = useState<PreviewViewport>("desktop");
   const [showAria, setShowAria] = useState(false);
   const [showTabOrder, setShowTabOrder] = useState(false);
+  const [interactive, setInteractive] = useState(false);
   const wcag = judgeContrast(code);
-  // sandbox="" で scripts/popups/forms すべて無効化。CSP metaでsandbox非対応ブラウザに対する二重防御を入れる
-  const srcDoc = buildPreviewSrcDoc(code, theme);
+  // 既定は sandbox="" + scripts 無効。interactive=true 時のみ allow-scripts に切替（CSP で外部 fetch を封じる）
+  const srcDoc = buildPreviewSrcDoc(code, theme, { allowScripts: interactive });
+  const sandboxAttr = interactive ? "allow-scripts" : "";
   // ARIA snapshot / Tab 順は表示時のみ計算（DOMParser 呼び出しコスト回避）
   const ariaText = showAria ? formatAriaSnapshot(buildAriaSnapshot(code)) : "";
   const tabOrderText = showTabOrder ? formatTabOrder(extractTabOrder(code)) : "";
   return (
     <div className={styles.htmlPreview}>
+      {show && interactive && (
+        <div className={styles.interactiveWarn} role="note">
+          ⚠ インタラクティブ実行中: コードを確認したうえで有効化してください。外部 fetch・接続は CSP で封じています
+        </div>
+      )}
       {show && (
         <div className={styles.previewWrap} data-viewport={viewport}>
           <iframe
+            key={interactive ? "interactive" : "static"}
             className={styles.previewFrame}
-            sandbox=""
+            sandbox={sandboxAttr}
             srcDoc={srcDoc}
-            title={`HTMLプレビュー（${THEME_STYLES[theme].titleSuffix}・${VIEWPORT_STYLES[viewport].label}）`}
+            title={`HTMLプレビュー（${THEME_STYLES[theme].titleSuffix}・${VIEWPORT_STYLES[viewport].label}${interactive ? "・インタラクティブ" : ""}）`}
           />
         </div>
       )}
@@ -993,6 +1001,16 @@ function HtmlPreview({ code }: { code: string }) {
           title="Tab で順に到達する要素を簡易再現で表示"
         >
           {showTabOrder ? "Tab 順を閉じる" : "Tab 順を表示"}
+        </button>
+        <button
+          type="button"
+          className={styles.previewBtn}
+          data-interactive={interactive}
+          onClick={() => setInteractive(s => !s)}
+          aria-pressed={interactive}
+          title="sandbox=allow-scripts でインラインスクリプトを実行（CSP で外部 connect は封じる）"
+        >
+          {interactive ? "実行を停止" : "インタラクティブ実行"}
         </button>
         {wcag && theme !== "forced-colors" && <ContrastBadge wcag={wcag} />}
       </div>
