@@ -20,7 +20,7 @@ dotenv.config({ path: path.join(process.cwd(), ".env.local") });
 // ── 型定義 ───────────────────────────────────────────
 type CuratedSnippet = {
   id: string;
-  mode?: "ia" | "visual" | "system" | "handoff";
+  mode?: "ia" | "visual" | "system" | "handoff" | "interactive";
   title: string;
   category: "flow-goal" | "spec-handoff" | "ui-quality";
   tags: string[];
