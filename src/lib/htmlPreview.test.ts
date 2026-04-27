@@ -124,6 +124,20 @@ describe("buildPreviewSrcDoc", () => {
     const doc = buildPreviewSrcDoc("<p>x</p>", "light", { allowScripts: false });
     expect(doc).not.toContain("connect-src");
   });
+
+  it("img-src data: と media-src data: が常に含まれる（Phase 4 録画基盤）", () => {
+    for (const opt of [undefined, { allowScripts: true }, { allowScripts: false }] as const) {
+      const doc = buildPreviewSrcDoc("<p>x</p>", "light", opt);
+      expect(doc).toContain("img-src data:");
+      expect(doc).toContain("media-src data:");
+    }
+  });
+
+  it("外部 https: は CSP で許可されない（data: のみ）", () => {
+    const doc = buildPreviewSrcDoc("<p>x</p>", "light");
+    expect(doc).not.toMatch(/img-src[^;]*https:/);
+    expect(doc).not.toMatch(/media-src[^;]*https:/);
+  });
 });
 
 describe("THEME_STYLES", () => {

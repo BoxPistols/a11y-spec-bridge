@@ -18,6 +18,15 @@ import * as dotenv from "dotenv";
 dotenv.config({ path: path.join(process.cwd(), ".env.local") });
 
 // ── 型定義 ───────────────────────────────────────────
+// Phase 4 で導入した assets フィールド: 録画系の静的アセット参照
+// type: "gif" | "webm" | "img"、src は data: URL を推奨（HTTPS は将来 CSP 拡張時に許可）
+type CuratedAsset = {
+  type: "gif" | "webm" | "img";
+  src: string;
+  alt: string;
+  caption?: string;
+};
+
 type CuratedSnippet = {
   id: string;
   mode?: "ia" | "visual" | "system" | "handoff" | "interactive";
@@ -29,6 +38,7 @@ type CuratedSnippet = {
   rationale: string;
   severity: "error" | "warning";
   goal: string;
+  assets?: CuratedAsset[];
 };
 
 type VectorRecord = {
@@ -66,7 +76,11 @@ function buildEmbeddingText(s: CuratedSnippet): string {
   const tagStr = s.tags.join(", ");
   const questionLine = s.question ? `\n問い: ${s.question}` : "";
   const modeLine = s.mode ? ` | モード: ${s.mode}` : "";
-  return `[CURATED] ${s.title}\nカテゴリ: ${s.category}${modeLine} | タグ: ${tagStr}${questionLine}\n\n${s.text}\n\n理由: ${s.rationale}`;
+  // assets の alt / caption も検索ヒット率向上のため Embedding 入力に含める
+  const assetsLine = s.assets?.length
+    ? `\n録画/画像: ${s.assets.map(a => `[${a.type}] ${a.alt}${a.caption ? ` - ${a.caption}` : ""}`).join("; ")}`
+    : "";
+  return `[CURATED] ${s.title}\nカテゴリ: ${s.category}${modeLine} | タグ: ${tagStr}${questionLine}${assetsLine}\n\n${s.text}\n\n理由: ${s.rationale}`;
 }
 
 // ── メイン ────────────────────────────────────────────
