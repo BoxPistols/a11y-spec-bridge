@@ -24,6 +24,7 @@ import {
 import { buildAriaSnapshot, formatAriaSnapshot } from "../lib/ariaSnapshot";
 import { extractTabOrder, formatTabOrder } from "../lib/tabOrder";
 import { validateAriaAttrs } from "../lib/ariaValidate";
+import { validateWcagRefs } from "../lib/wcagValidate";
 import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
@@ -1078,6 +1079,24 @@ function AriaCheckBadge({ content }: { content: string }) {
   );
 }
 
+function WcagCheckBadge({ content }: { content: string }) {
+  // L3 Stage 2: AI 回答に含まれる WCAG 番号を WCAG 2.0/2.1/2.2 SC 辞書と照合
+  const wcag = validateWcagRefs(content);
+  if (wcag.total === 0) return null;
+  const warn = wcag.unknown.length > 0;
+  return (
+    <span
+      className={styles.ariaCheckBadge}
+      data-status={warn ? "warn" : "ok"}
+      title={warn
+        ? `未知 WCAG 番号（捏造の疑い）: ${wcag.unknown.join(", ")}`
+        : `WCAG 番号 ${wcag.valid.length} 件すべて WCAG 2.0/2.1/2.2 に存在`}
+    >
+      WCAG {warn ? `⚠ ${wcag.unknown.length}` : `✓ ${wcag.valid.length}`}
+    </span>
+  );
+}
+
 function ContrastBadge({ wcag }: { wcag: WCAGResult }) {
   // AA通常テキストを基準に pass/large/fail を区別
   const tier: "pass" | "large" | "fail" =
@@ -1169,6 +1188,7 @@ function MessageBubble({ msg }: { msg: Message }) {
               </span>
             )}
             <AriaCheckBadge content={msg.content} />
+            <WcagCheckBadge content={msg.content} />
             {!msg.error && (
               <div className={styles.aiActions} ref={menuRef}>
                 {/* コピー */}
