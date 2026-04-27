@@ -1030,6 +1030,29 @@
   border: 1px solid rgba(220, 150, 0, 0.6);
   border-radius: var(--radius);
 }
+.ariaCheckBadge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--ink2);
+  margin-left: 4px;
+  cursor: help;
+}
+.ariaCheckBadge[data-status="warn"] {
+  background: rgba(220, 80, 80, 0.12);
+  color: rgb(180, 30, 30);
+  border-color: rgba(220, 80, 80, 0.6);
+}
+.ariaCheckBadge[data-status="ok"] {
+  background: rgba(40, 160, 80, 0.1);
+  color: rgb(30, 130, 60);
+  border-color: rgba(40, 160, 80, 0.5);
+}
 .previewBtn {
   display: inline-flex;
   align-items: center;
