@@ -25,6 +25,7 @@ import { buildAriaSnapshot, formatAriaSnapshot } from "../lib/ariaSnapshot";
 import { extractTabOrder, formatTabOrder } from "../lib/tabOrder";
 import { validateAriaAttrs } from "../lib/ariaValidate";
 import { validateWcagRefs } from "../lib/wcagValidate";
+import { validateKeyboardCompleteness } from "../lib/keyboardValidate";
 import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
@@ -1097,6 +1098,23 @@ function WcagCheckBadge({ content }: { content: string }) {
   );
 }
 
+function KeyboardCheckBadge({ content }: { content: string }) {
+  // L3 Stage 3-b: キーボード操作言及あり + Tab 言及なし パターンを警告
+  const k = validateKeyboardCompleteness(content);
+  if (!k.hasOperationKey) return null;
+  return (
+    <span
+      className={styles.ariaCheckBadge}
+      data-status={k.warn ? "warn" : "ok"}
+      title={k.warn
+        ? "Space/Enter/矢印などの操作キー言及はあるが Tab フォーカス手順への言及がありません。ARIA APG では Tab → 操作キー の順序が前提です"
+        : "キーボード操作の Tab フォーカス言及あり"}
+    >
+      KBD {k.warn ? "⚠ Tab抜け" : "✓"}
+    </span>
+  );
+}
+
 function ContrastBadge({ wcag }: { wcag: WCAGResult }) {
   // AA通常テキストを基準に pass/large/fail を区別
   const tier: "pass" | "large" | "fail" =
@@ -1189,6 +1207,7 @@ function MessageBubble({ msg }: { msg: Message }) {
             )}
             <AriaCheckBadge content={msg.content} />
             <WcagCheckBadge content={msg.content} />
+            <KeyboardCheckBadge content={msg.content} />
             {!msg.error && (
               <div className={styles.aiActions} ref={menuRef}>
                 {/* コピー */}
