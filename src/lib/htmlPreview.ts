@@ -66,6 +66,9 @@ export const THEME_STYLES: Record<PreviewTheme, {
 // （forced-colors のみ * セレクタで強制剥離して Windows ハイコントラスト相当を擬似再現）
 // allowScripts=true 時は CSP に script-src 'unsafe-inline' を追加し、sandbox="allow-scripts" と組み合わせて
 // インラインスクリプト実行を許可する（外部 fetch/connect は connect-src 'none' で封じる）
+//
+// 画像 / メディアは data: URL のみ許可（Phase 4 録画系の最小基盤）
+// HTTPS CDN を許可するかは将来判断。現状は data: 埋込のみで XSS 経路を最小化
 export function buildPreviewSrcDoc(
   code: string,
   theme: PreviewTheme,
@@ -74,8 +77,8 @@ export function buildPreviewSrcDoc(
   const t = THEME_STYLES[theme];
   const allowScripts = options?.allowScripts ?? false;
   const csp = allowScripts
-    ? "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src data:; connect-src 'none'; frame-ancestors 'none'"
-    : "default-src 'none'; style-src 'unsafe-inline'; font-src data:";
+    ? "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src data:; img-src data:; media-src data:; connect-src 'none'; frame-ancestors 'none'"
+    : "default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:; media-src data:";
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><style>:root{color-scheme:${t.colorScheme};}body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;margin:16px;font-size:14px;color:${t.bodyFg};background:${t.bodyBg};}${t.extraCss}</style></head><body>${code}</body></html>`;
 }
 
