@@ -26,6 +26,7 @@ import { extractTabOrder, formatTabOrder } from "../lib/tabOrder";
 import { validateAriaAttrs } from "../lib/ariaValidate";
 import { validateWcagRefs } from "../lib/wcagValidate";
 import { validateKeyboardCompleteness } from "../lib/keyboardValidate";
+import { validateCssProps } from "../lib/cssValidate";
 import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
@@ -1115,6 +1116,25 @@ function KeyboardCheckBadge({ content }: { content: string }) {
   );
 }
 
+function CssCheckBadge({ content }: { content: string }) {
+  // L3 Stage 3-a: AI 回答に含まれる CSS プロパティを主要辞書と照合
+  // 辞書漏れの可能性があるため warn ではなく info 寄り（color: ok）扱い
+  const css = validateCssProps(content);
+  if (css.total === 0) return null;
+  const warn = css.unknown.length > 0;
+  return (
+    <span
+      className={styles.ariaCheckBadge}
+      data-status={warn ? "warn" : "ok"}
+      title={warn
+        ? `主要 CSS 辞書外（typo or 新規プロパティ可能性）: ${css.unknown.join(", ")}`
+        : `CSS プロパティ ${css.valid.length} 種すべて主要辞書に存在`}
+    >
+      CSS {warn ? `⚠ ${css.unknown.length}` : `✓ ${css.valid.length}`}
+    </span>
+  );
+}
+
 function ContrastBadge({ wcag }: { wcag: WCAGResult }) {
   // AA通常テキストを基準に pass/large/fail を区別
   const tier: "pass" | "large" | "fail" =
@@ -1208,6 +1228,7 @@ function MessageBubble({ msg }: { msg: Message }) {
             <AriaCheckBadge content={msg.content} />
             <WcagCheckBadge content={msg.content} />
             <KeyboardCheckBadge content={msg.content} />
+            <CssCheckBadge content={msg.content} />
             {!msg.error && (
               <div className={styles.aiActions} ref={menuRef}>
                 {/* コピー */}
