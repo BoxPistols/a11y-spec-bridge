@@ -13,7 +13,9 @@ out/
 .env.*.local
 
 # クロール生成物 — Upstash投入済みなのでリポジトリ不要
-docs/
+docs/*.jsonl
+# CURATED スニペット（人手作成のナレッジ）はリポジトリで管理
+!docs/curated-snippets.json
 
 # ビルド成果物
 .scripts-dist/
