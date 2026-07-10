@@ -1,5 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+
+// モバイル対応: device-width 基準。ピンチズームは禁止しない（WCAG 1.4.4 拡大縮小）
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // ノッチ端末で safe-area を使えるようにする
+};
 
 export const metadata: Metadata = {
   title: "SpecBridge — Design × Spec Q&A",

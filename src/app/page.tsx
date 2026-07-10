@@ -100,6 +100,7 @@ export default function Page() {
   const [suggestCat,   setSuggestCat]   = useState<string | null>(null);
   const [suggestTheme, setSuggestTheme] = useState<string | null>(null);
   const [showHelp,     setShowHelp]     = useState(false);
+  const [sidebarOpen,  setSidebarOpen]  = useState(false); // モバイル: サイドバードロワー
   const [inviteCode,   setInviteCode]   = useState("");
   const [inviteValid,  setInviteValid]  = useState<boolean | null>(null);
   const [quota,        setQuota]        = useState<{ remaining: number; limit: number } | null>(null);
@@ -150,6 +151,19 @@ export default function Page() {
   }, [userApiKey]);
 
   useEffect(() => { fetchQuota(inviteCode || undefined); }, [fetchQuota, inviteCode]);
+
+  // モバイル: ドロワー展開中は Esc で閉じ、背面スクロールをロック
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSidebarOpen(false); };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [sidebarOpen]);
 
   function toggleTheme() {
     const next = theme === "light" ? "dark" : "light";
@@ -305,8 +319,11 @@ export default function Page() {
   return (
     <div className={styles.layout}>
 
-      {/* ── サイドバー ── */}
-      <aside className={styles.sidebar}>
+      {/* ── モバイル: サイドバー背面のバックドロップ ── */}
+      {sidebarOpen && <div className={styles.backdrop} onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
+
+      {/* ── サイドバー（モバイルではドロワー） ── */}
+      <aside className={styles.sidebar} data-open={sidebarOpen}>
 
         {/* ロゴ */}
         <div className={styles.brand}>
@@ -338,6 +355,14 @@ export default function Page() {
               {ICO.newChat}
             </button>
           )}
+          {/* モバイル: ドロワーを閉じる */}
+          <button
+            className={styles.sidebarClose}
+            onClick={() => setSidebarOpen(false)}
+            aria-label="メニューを閉じる"
+          >
+            {ICO.close}
+          </button>
         </div>
 
         {/* ロール選択 */}
@@ -601,6 +626,7 @@ export default function Page() {
                     setCurrentId(s.id);
                     setMessages(s.messages);
                     setRole(s.role);
+                    setSidebarOpen(false); // モバイル: 選択したらドロワーを閉じる
                   }}
                 >
                   <span className={styles.historyTitle}>{s.title}</span>
@@ -728,6 +754,27 @@ export default function Page() {
 
       {/* ── メイン ── */}
       <main className={styles.main}>
+
+        {/* ── モバイル: 上部バー（ハンバーガー + ブランド） ── */}
+        <div className={styles.mobileBar}>
+          <button
+            className={styles.hamburger}
+            onClick={() => setSidebarOpen(true)}
+            aria-label="メニューを開く"
+          >
+            {ICO.menu}
+          </button>
+          <div className={styles.mobileBrand}>SpecBridge</div>
+          {messages.length > 0 && (
+            <button
+              className={styles.mobileNewChat}
+              onClick={() => { setCurrentId(null); setMessages([]); }}
+              aria-label="新しい会話を開始"
+            >
+              {ICO.newChat}
+            </button>
+          )}
+        </div>
 
         {/* ── メッセージエリア ── */}
         <div className={styles.messages}>
