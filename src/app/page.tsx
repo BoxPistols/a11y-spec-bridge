@@ -495,9 +495,9 @@ export default function Page() {
           />
         </div>
 
-        {/* AI 連携エクスポート */}
+        {/* ワークフロー連携エクスポート */}
         <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>AI 連携エクスポート <HelpTip text="この会話から、開発リポジトリにそのまま置ける AI 用ファイルを生成します。Claude Code の Skill やサブエージェントとして置くと、アクセシビリティを意識しなくても AI コーディング時に自動でレビューが効くようになります。" /></div>
+          <div className={styles.sideLabel}>ワークフロー連携 <HelpTip text="この会話を、普段の業務にそのまま流し込める形で出力します。ビジネス根拠資料はステークホルダー説明・要件定義に、受け入れ基準はチケットの Done 定義に貼れます。Claude Code の Skill / サブエージェントとして置けば、アクセシビリティを意識しなくても AI コーディング時に自動でレビューが効きます。" /></div>
           {messages.length > 0 ? (
             <div className={styles.exportList}>
               {EXPORT_META.map(ex => (
@@ -522,7 +522,7 @@ export default function Page() {
               ))}
             </div>
           ) : (
-            <div className={styles.exportEmpty}>会話すると DESIGN.md や Claude Code Skill をここから生成できます</div>
+            <div className={styles.exportEmpty}>会話すると、ビジネス根拠資料・受け入れ基準・Claude Code Skill などをここから生成できます</div>
           )}
         </div>
 

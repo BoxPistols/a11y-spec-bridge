@@ -12,6 +12,7 @@
 import { WCAG_SC, type WcagSC } from "./wcagDictionary";
 import { validateWcagRefs } from "./wcagValidate";
 import { validateAriaAttrs, stripBadSections } from "./ariaValidate";
+import { getBizImpact, LEGAL_CONTEXT } from "./bizImpact";
 import type { ChatSession } from "./types";
 
 export type SessionFindings = {
@@ -221,11 +222,85 @@ ${specLinkList(f.specLinks)}
 `;
 }
 
+// ── ビジネス根拠（ステークホルダー説明・要件定義の背景資料） ──
+// アクセシビリティは「可視化されず・ビジネス貢献が見えない」ため優先度が構造的に
+// 上がらない。会話で特定された要件を、優先度の議論で通用する言語
+// （法的リスク・ユーザー到達率・放置コスト）に翻訳して、そのまま資料に貼れるようにする
+export function buildBusinessCase(session: ChatSession): string {
+  const f = extractFindings(session);
+  const date = session.createdAt ? session.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+
+  const rows = f.wcagCriteria.length > 0
+    ? f.wcagCriteria.map(sc => {
+        const b = getBizImpact(sc.id);
+        return `| ${sc.id} ${sc.title}（${sc.level}） | ${b.risk} | ${b.benefit} |`;
+      }).join("\n")
+    : "| —（この会話では特定の達成基準は引用されていません） | — | — |";
+
+  return `# アクセシビリティ対応のビジネス根拠 — ${session.title}
+
+> SpecBridge の会話から自動生成（${date}）。要件定義・ステークホルダー説明資料にそのまま貼り付けて使えます。
+> 数値・法的事実には出典を併記しています。
+
+## 法的・市場背景
+
+${LEGAL_CONTEXT}
+
+## この会話で特定された要件とビジネス影響
+
+| 要件（WCAG 2.2） | 放置した場合のリスク | 対応で得られる効果 |
+|---|---|---|
+${rows}
+
+## 対応タイミングの考え方
+
+- 設計・実装段階での対応コストは、公開後の改修より大幅に小さい（レイアウト・色・構造の変更は後から入れるほど波及が大きい）
+- 上記要件の多くは自動チェック（axe 等）で継続検証でき、一度対応すれば維持コストはほぼゼロにできる
+
+## 根拠仕様（一次情報）
+
+${specLinkList(f.specLinks)}
+`;
+}
+
+// ── 受け入れ基準（チケット・PBI に貼る Done の定義） ──
+// a11y を「優先度をつけて対応するタスク」ではなく「仕様の一部」として
+// 通常の開発フローに流し込む。検証手順は専門知識なしで実行できる形で書く
+export function buildAcceptanceCriteria(session: ChatSession): string {
+  const f = extractFindings(session);
+
+  const items = f.wcagCriteria.length > 0
+    ? f.wcagCriteria.map(sc => {
+        const b = getBizImpact(sc.id);
+        return `- [ ] ${b.ac}\n  <sub>根拠: WCAG 2.2 SC ${sc.id}（${sc.title} / Level ${sc.level}）</sub>`;
+      }).join("\n")
+    : "- [ ]（この会話では特定の達成基準は引用されていません。会話で仕様を確認してから再生成してください）";
+
+  return `## 受け入れ基準（アクセシビリティ）— ${session.title}
+
+> チケット / PBI の Done 定義にそのまま貼り付けて使えます（SpecBridge 自動生成）。
+> 各項目は専門知識なしで検証できる手順で書かれています。
+
+${items}
+
+### 共通の確認手順（5分でできるセルフチェック）
+
+1. **キーボードだけで操作**: マウスを使わず Tab / Enter / Space / 矢印キーで対象機能を最後まで完了できるか
+2. **フォーカスの見える化**: Tab を押しながら「今どこにいるか」を常に目で追えるか
+3. **拡大**: ブラウザを 200% に拡大して、崩れ・読めない文字・押せないボタンがないか
+4. **自動チェック**: ブラウザ拡張の axe DevTools を対象画面で実行し、violation が出ないか
+`;
+}
+
 // ── エクスポートメニュー用メタ ────────────────────────
-export type ExportKind = "design-doc" | "skill" | "agent" | "claude-md";
+export type ExportKind = "business-case" | "acceptance-criteria" | "design-doc" | "skill" | "agent" | "claude-md";
 
 export const EXPORT_META: { kind: ExportKind; label: string; filename: string; desc: string; build: (s: ChatSession) => string }[] = [
+  // ワークフロー連携（デザイナーの本業＝要件定義・優先度説明に流し込む）
+  { kind: "business-case", label: "ビジネス根拠資料", filename: "a11y-business-case.md", desc: "法的リスク・ユーザー到達率・放置コストの言語に翻訳。要件定義やステークホルダー説明にそのまま貼れる", build: buildBusinessCase },
+  { kind: "acceptance-criteria", label: "受け入れ基準", filename: "a11y-acceptance-criteria.md", desc: "チケット/PBI の Done 定義に貼れるチェックリスト。専門知識なしで検証できる手順つき", build: buildAcceptanceCriteria },
   { kind: "design-doc", label: "DESIGN.md", filename: "DESIGN.md", desc: "設計判断ログ + WCAG チェックリスト。チーム共有・PR 添付用", build: buildDesignDoc },
+  // AI 連携（各自の AI エージェントに a11y を注入する）
   { kind: "skill", label: "Claude Code Skill", filename: "SKILL.md", desc: ".claude/skills/a11y-review/ に置くと AI コーディング時に a11y レビューが自動で効く", build: buildSkillMd },
   { kind: "agent", label: "サブエージェント定義", filename: "a11y-reviewer.md", desc: ".claude/agents/ に置くと a11y 専門レビュアーが使える", build: buildAgentMd },
   { kind: "claude-md", label: "CLAUDE.md 追記", filename: "claude-md-a11y-snippet.md", desc: "プロジェクトの CLAUDE.md に貼ると全 AI 作業に a11y 要件が乗る", build: buildClaudeMdSnippet },

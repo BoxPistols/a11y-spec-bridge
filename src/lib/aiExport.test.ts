@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { extractFindings, buildDesignDoc, buildSkillMd, buildAgentMd, buildClaudeMdSnippet } from "./aiExport";
+import { extractFindings, buildDesignDoc, buildSkillMd, buildAgentMd, buildClaudeMdSnippet, buildBusinessCase, buildAcceptanceCriteria } from "./aiExport";
+import { getBizImpact } from "./bizImpact";
 import type { ChatSession } from "./types";
 
 function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
@@ -107,5 +108,37 @@ describe("エクスポート生成", () => {
     const empty = makeSession({ messages: [] });
     expect(buildDesignDoc(empty)).toContain("特定の達成基準は引用されていません");
     expect(buildSkillMd(empty)).toContain("参照リンクなし");
+  });
+});
+
+describe("ビジネス翻訳レイヤー", () => {
+  const session = makeSession();
+
+  it("ビジネス根拠資料に法的背景と SC ごとのリスク/効果が含まれる", () => {
+    const doc = buildBusinessCase(session);
+    expect(doc).toContain("障害者差別解消法");
+    expect(doc).toContain("JIS X 8341-3");
+    expect(doc).toContain("2.4.3");
+    expect(doc).toContain("| 要件（WCAG 2.2） | 放置した場合のリスク | 対応で得られる効果 |");
+    expect(doc).toContain("https://www.w3.org/WAI/WCAG22/Understanding/focus-order");
+  });
+
+  it("受け入れ基準がチェックリスト + WCAG 根拠つきで生成される", () => {
+    const doc = buildAcceptanceCriteria(session);
+    expect(doc).toContain("- [ ]");
+    expect(doc).toContain("WCAG 2.2 SC 2.4.3");
+    expect(doc).toContain("セルフチェック");
+  });
+
+  it("個別整備済み SC は固有の翻訳、未整備 SC は原則フォールバックを返す", () => {
+    expect(getBizImpact("1.4.3").ac).toContain("4.5:1");
+    // 1.2.4（キャプション・未整備）→ 原則1のフォールバック
+    expect(getBizImpact("1.2.4").risk).toContain("知覚できない");
+  });
+
+  it("空セッションでも壊れない", () => {
+    const empty = makeSession({ messages: [] });
+    expect(buildBusinessCase(empty)).toContain("特定の達成基準は引用されていません");
+    expect(buildAcceptanceCriteria(empty)).toContain("会話で仕様を確認してから再生成");
   });
 });
