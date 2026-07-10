@@ -28,6 +28,7 @@ import { validateWcagRefs } from "../lib/wcagValidate";
 import { validateKeyboardCompleteness } from "../lib/keyboardValidate";
 import { validateCssProps } from "../lib/cssValidate";
 import { EXPORT_META } from "../lib/aiExport";
+import { parseVerdict, VERDICT_LABEL } from "../lib/verdict";
 import type { ModelId, UserRole, AnswerMode, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
@@ -1335,9 +1336,30 @@ function MessageBubble({ msg, onExpand }: { msg: Message; onExpand?: () => void 
               </div>
             )}
           </div>
-          <div className={styles.aiText}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>{msg.content}</ReactMarkdown>
-          </div>
+          {(() => {
+            // クイック回答の判定行（✅/❌/⚠️）を色付きバナーに昇格。なければ従来描画
+            const verdict = msg.error ? null : parseVerdict(msg.content);
+            if (!verdict) {
+              return (
+                <div className={styles.aiText}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>{msg.content}</ReactMarkdown>
+                </div>
+              );
+            }
+            return (
+              <>
+                <div className={styles.verdictBanner} data-tier={verdict.tier}>
+                  <span className={styles.verdictChip}>{VERDICT_LABEL[verdict.tier]}</span>
+                  <span className={styles.verdictHeadline}>{verdict.headline}</span>
+                </div>
+                {verdict.body && (
+                  <div className={styles.aiText}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>{verdict.body}</ReactMarkdown>
+                  </div>
+                )}
+              </>
+            );
+          })()}
           {onExpand && (
             <button
               className={styles.expandBtn}
@@ -1390,15 +1412,30 @@ function SourceCard({ source }: { source: { source: SourceTag; title: string; se
   );
 }
 
+// 処理の進み具合を言葉で見せる（コードに関心がない人にも「何をしているか」が伝わる）
+const THINKING_STEPS = [
+  "仕様データベースを検索中...",
+  "WCAG / WAI-ARIA / MDN を照合中...",
+  "根拠を整理して回答を作成中...",
+];
+
 function ThinkingBubble({ model }: { model: string }) {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setStep(s => Math.min(s + 1, THINKING_STEPS.length - 1)), 2500);
+    return () => clearInterval(t);
+  }, []);
   return (
     <div className={`${styles.msg} ${styles.assistant}`}>
       <div className={styles.aiBubble}>
         <div className={styles.aiHeader}>
           <span className={styles.aiModel}>{model}</span>
         </div>
-        <div className={styles.thinking}>
-          <span /><span /><span />
+        <div className={styles.thinkingRow}>
+          <div className={styles.thinking}>
+            <span /><span /><span />
+          </div>
+          <span className={styles.thinkingLabel} aria-live="polite">{THINKING_STEPS[step]}</span>
         </div>
       </div>
     </div>

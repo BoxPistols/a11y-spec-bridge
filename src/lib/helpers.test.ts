@@ -54,7 +54,7 @@ describe("buildExportPayload", () => {
       id: "m1",
       role: "assistant",
       content: "回答",
-      sources: [{ title: "仕様書", url: "https://example.com" }],
+      sources: [{ id: "src1", score: 0.9, source: "WCAG", title: "仕様書", section: "1.1.1", url: "https://example.com", snippet: "..." }],
       tokens: { input: 100, output: 200 },
     };
     const sessions = [makeSession({ messages: [makeMsgUser("質問"), msg] })];
