@@ -27,7 +27,8 @@ import { validateAriaAttrs } from "../lib/ariaValidate";
 import { validateWcagRefs } from "../lib/wcagValidate";
 import { validateKeyboardCompleteness } from "../lib/keyboardValidate";
 import { validateCssProps } from "../lib/cssValidate";
-import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
+import { EXPORT_META } from "../lib/aiExport";
+import type { ModelId, UserRole, AnswerMode, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
 type ModelTier = "free" | "byok"; // byok = bring your own key
@@ -61,25 +62,27 @@ function saveSessions(sessions: ChatSession[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 }
 
-function loadPrefs(): { role: UserRole; model: ModelId } {
-  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.4-nano" };
+function loadPrefs(): { role: UserRole; model: ModelId; mode: AnswerMode } {
+  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.4-nano", mode: "concise" };
   try {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}");
     return {
       role: (["designer", "engineer"] as UserRole[]).includes(p.role) ? p.role : "designer",
       model: MODELS.some(m => m.id === p.model) ? p.model : "gemini-2.5-flash",
+      mode: p.mode === "detailed" ? "detailed" : "concise",
     };
-  } catch { return { role: "designer", model: "gpt-5.4-nano" }; }
+  } catch { return { role: "designer", model: "gpt-5.4-nano", mode: "concise" }; }
 }
 
-function savePrefs(role: UserRole, model: ModelId) {
-  localStorage.setItem(PREFS_KEY, JSON.stringify({ role, model }));
+function savePrefs(role: UserRole, model: ModelId, mode: AnswerMode) {
+  localStorage.setItem(PREFS_KEY, JSON.stringify({ role, model, mode }));
 }
 
 // ── コンポーネント ────────────────────────────────────
 export default function Page() {
   const [role,       setRole]       = useState<UserRole>("designer");
   const [model,      setModel]      = useState<ModelId>("gpt-5.4-nano");
+  const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [messages,   setMessages]   = useState<Message[]>([]);
   const [input,      setInput]      = useState("");
   const [loading,    setLoading]    = useState(false);
@@ -115,6 +118,7 @@ export default function Page() {
     const prefs = loadPrefs();
     setRole(prefs.role);
     setModel(prefs.model);
+    setAnswerMode(prefs.mode);
     // ユーザー API キー読み込み
     setUserApiKey(localStorage.getItem("specbridge-user-apikey") ?? "");
     // 招待コード読み込み
@@ -183,7 +187,7 @@ export default function Page() {
   }, [inputHeight]);
 
   // 設定変更時に保存
-  useEffect(() => { savePrefs(role, model); }, [role, model]);
+  useEffect(() => { savePrefs(role, model, answerMode); }, [role, model, answerMode]);
 
   // メッセージ変更時に自動保存
   useEffect(() => {
@@ -213,8 +217,9 @@ export default function Page() {
   }, []);
 
   // ── 質問送信 ──────────────────────────────────────
-  async function handleSubmit(q?: string) {
+  async function handleSubmit(q?: string, forceMode?: AnswerMode) {
     const question = (q ?? input).trim();
+    const mode = forceMode ?? answerMode;
     if (!question || loading) return;
     const newMsg: Message = { id: Date.now().toString(), role: "user", content: question, userRole: role };
     const updatedMessages = [...messages, newMsg];
@@ -235,7 +240,7 @@ export default function Page() {
       const res  = await fetch("/api/query", {
         method: "POST",
         headers,
-        body: JSON.stringify({ question, model, role, k: 6, history }),
+        body: JSON.stringify({ question, model, role, mode, k: 6, history }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -487,6 +492,37 @@ export default function Page() {
             style={{ display: "none" }}
             onChange={e => { const f = e.target.files?.[0]; if (f) ingestFile(f); }}
           />
+        </div>
+
+        {/* AI 連携エクスポート */}
+        <div className={styles.sideSection}>
+          <div className={styles.sideLabel}>AI 連携エクスポート <HelpTip text="この会話から、開発リポジトリにそのまま置ける AI 用ファイルを生成します。Claude Code の Skill やサブエージェントとして置くと、アクセシビリティを意識しなくても AI コーディング時に自動でレビューが効くようになります。" /></div>
+          {messages.length > 0 ? (
+            <div className={styles.exportList}>
+              {EXPORT_META.map(ex => (
+                <button
+                  key={ex.kind}
+                  className={styles.exportBtn}
+                  title={ex.desc}
+                  onClick={() => {
+                    const session: ChatSession = {
+                      id: currentId ?? "current",
+                      title: messages.find(m => m.role === "user")?.content.slice(0, 40) ?? "会話",
+                      messages,
+                      role,
+                      createdAt: new Date().toISOString(),
+                    };
+                    downloadText(ex.build(session), ex.filename);
+                  }}
+                >
+                  {ICO.download}
+                  <span>{ex.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.exportEmpty}>会話すると DESIGN.md や Claude Code Skill をここから生成できます</div>
+          )}
         </div>
 
         {/* 履歴 */}
@@ -839,8 +875,17 @@ export default function Page() {
               )}
             </div>
           ) : (
-            messages.map(msg => (
-              <MessageBubble key={msg.id} msg={msg} />
+            messages.map((msg, i) => (
+              <MessageBubble
+                key={msg.id}
+                msg={msg}
+                onExpand={
+                  // 最後の AI 回答にだけ深掘りボタンを出す（クイック回答の続きを読む導線）
+                  !loading && !msg.error && msg.role === "assistant" && i === messages.length - 1 && msg.sources
+                    ? () => handleSubmit("直前の回答を、根拠仕様の引用・Good/Bad の視覚例・実装コード込みで詳しく展開してください", "detailed")
+                    : undefined
+                }
+              />
             ))
           )}
           {loading && <ThinkingBubble model={model} />}
@@ -865,6 +910,28 @@ export default function Page() {
               ) : (
                 <><svg {...sz(12)}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Engineer</>
               )}
+            </div>
+            <div className={styles.modeSwitch} role="group" aria-label="回答の詳しさ">
+              <button
+                type="button"
+                className={styles.modeBtn}
+                data-active={answerMode === "concise"}
+                aria-pressed={answerMode === "concise"}
+                onClick={() => setAnswerMode("concise")}
+                title="結論ファーストの短い回答（8行以内）。足りなければ回答下の「詳しく展開」で深掘り"
+              >
+                ⚡ クイック
+              </button>
+              <button
+                type="button"
+                className={styles.modeBtn}
+                data-active={answerMode === "detailed"}
+                aria-pressed={answerMode === "detailed"}
+                onClick={() => setAnswerMode("detailed")}
+                title="Good/Bad 視覚例・仕様引用込みの深掘り回答"
+              >
+                📖 じっくり
+              </button>
             </div>
             <textarea
               className={styles.textarea}
@@ -1176,7 +1243,7 @@ const mdComponents: Components = {
 };
 
 // ── サブコンポーネント ────────────────────────────────
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({ msg, onExpand }: { msg: Message; onExpand?: () => void }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState<"copy" | "dl" | null>(null);
@@ -1271,6 +1338,16 @@ function MessageBubble({ msg }: { msg: Message }) {
           <div className={styles.aiText}>
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>{msg.content}</ReactMarkdown>
           </div>
+          {onExpand && (
+            <button
+              className={styles.expandBtn}
+              onClick={onExpand}
+              title="この回答を根拠仕様・視覚例・実装コード込みで深掘り"
+            >
+              {ICO.learn}
+              <span>詳しく展開</span>
+            </button>
+          )}
           {msg.sources && msg.sources.length > 0 && (
             <div className={styles.sourcesWrap}>
               <button className={styles.sourcesToggle} onClick={() => setOpen(o => !o)} title={open ? "参照仕様を閉じる" : "参照仕様を展開"}>

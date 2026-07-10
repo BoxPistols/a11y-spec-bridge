@@ -9,6 +9,7 @@ import type { SearchResult } from "./rag";
 
 export type ModelId = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
 export type UserRole = "designer" | "engineer";
+export type AnswerMode = "concise" | "detailed";
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export type LLMResponse = {
@@ -18,8 +19,27 @@ export type LLMResponse = {
   outputTokens?: number;
 };
 
+// ── 回答モード別の分量ルール ──────────────────────────
+// concise: 結論ファースト・最小分量（デフォルト）。detailed: 従来の深掘り解説
+function buildModeRules(mode: AnswerMode): string {
+  if (mode === "concise") {
+    return `
+# 回答フォーマット（クイックモード・厳守）
+- 1行目は必ず結論で始める。「✅ 問題ない」「❌ 避けるべき」「⚠️ 条件付きで可」のいずれか + 理由一文
+- 本文はコードブロックを除いて最大8行。箇条書きは3項目以内
+- コードブロックは最大1つ（最小限の Good 例のみ。Bad 例は出さない）
+- 根拠は「WCAG 2.2 SC X.X.X」形式で1行にまとめる
+- 前置き・質問の復唱・要約・締めの挨拶・「詳しくは〜」の誘導文をすべて禁止（UI 側に深掘りボタンがある）
+- 表・見出し（##）は使わない`;
+  }
+  return `
+# 回答フォーマット（詳細モード）
+- 冒頭に「結論」を2文以内で示してから、根拠・例の順に展開する
+- 前置きや質問の復唱はせず、本題から始める`;
+}
+
 // ── ロール別システムプロンプト ────────────────────────
-function buildSystem(role: UserRole): string {
+function buildSystem(role: UserRole, mode: AnswerMode): string {
   const base = `あなたは Web アクセシビリティ・HTML仕様・デザインシステムの専門家です。
 提供されたコンテキスト（MDN / WCAG / WAI-ARIA の仕様）に基づいて回答してください。
 コンテキストに情報がない場合は「参照できる仕様に該当情報がありません」と答えてください。
@@ -36,7 +56,21 @@ function buildSystem(role: UserRole): string {
   4. Space または Enter で確定
   5. Esc でキャンセル
 - UI のヒントテキストやラベルを HTML サンプルに含める場合、前提となる Tab フォーカス手順も併記する（"[Spaceで選択]" だけにせず "[Tab→Space]" のように示す）
-- 数値（コントラスト比・サイズ・距離等）は手計算で出さない。視覚論点では UI 側でランタイム実測されるため hex 色指定のみ書く。物理寸法は仕様の引用として書く（例: "44x44pt (iOS HIG)"、"48dp (Material)"）`;
+- 数値（コントラスト比・サイズ・距離等）は手計算で出さない。視覚論点では UI 側でランタイム実測されるため hex 色指定のみ書く。物理寸法は仕様の引用として書く（例: "44x44pt (iOS HIG)"、"48dp (Material)"）
+${buildModeRules(mode)}`;
+
+  if (role === "designer" && mode === "concise") {
+    return `${base}
+
+回答対象はUIUXデザイナーです。「デザインの判断にどう影響するか」だけを簡潔に答えてください。
+視覚的な論点（コントラスト・フォーカスリング・タッチターゲット等）では、最小の Good サンプルを html コードブロック1つで示してよい（自己完結・インラインstyle・色は #hex 形式・外部リソース禁止・font-family: -apple-system,BlinkMacSystemFont,sans-serif）。コントラスト比の数値は書かない（UI 側で自動実測される）。視覚比較が不要な論点ではコードを出さずテキストのみで答える。`;
+  }
+
+  if (role === "engineer" && mode === "concise") {
+    return `${base}
+
+回答対象はフロントエンドエンジニアです。コピペで使える最小の正解コード1つ + 根拠1行を優先してください。ブラウザ/スクリーンリーダーの注意点は、判断が変わる場合のみ1行で添える。`;
+  }
 
   if (role === "designer") {
     return `${base}
@@ -138,6 +172,7 @@ function buildContext(results: SearchResult[]): string {
 async function callOpenAI(
   model: "gpt-5.4-nano" | "gpt-5.4-mini",
   role: UserRole,
+  mode: AnswerMode,
   context: string,
   question: string,
   history?: ChatMessage[],
@@ -150,7 +185,7 @@ async function callOpenAI(
   if (!apiKey) throw new Error("API キーが設定されていません");
   const client = new OpenAI({ apiKey });
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: "system", content: buildSystem(role) },
+    { role: "system", content: buildSystem(role, mode) },
   ];
   // 会話履歴（最新の質問を除く過去分）
   if (history && history.length > 1) {
@@ -178,6 +213,7 @@ async function callOpenAI(
 // ── Gemini ────────────────────────────────────────────
 async function callGemini(
   role: UserRole,
+  mode: AnswerMode,
   context: string,
   question: string,
   history?: ChatMessage[]
@@ -185,7 +221,7 @@ async function callGemini(
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? "");
   const m = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
-    systemInstruction: buildSystem(role),
+    systemInstruction: buildSystem(role, mode),
   });
   // 会話履歴付きチャット
   const chat = m.startChat({
@@ -214,15 +250,16 @@ export async function generate(
   results: SearchResult[],
   question: string,
   history?: ChatMessage[],
-  userApiKey?: string
+  userApiKey?: string,
+  mode: AnswerMode = "concise"
 ): Promise<LLMResponse> {
   const context = buildContext(results);
   switch (modelId) {
     case "gpt-5.4-nano":
     case "gpt-5.4-mini":
-      return callOpenAI(modelId, role, context, question, history, userApiKey);
+      return callOpenAI(modelId, role, mode, context, question, history, userApiKey);
     case "gemini-2.5-flash":
-      return callGemini(role, context, question, history);
+      return callGemini(role, mode, context, question, history);
     default:
       throw new Error(`Unknown model: ${modelId}`);
   }

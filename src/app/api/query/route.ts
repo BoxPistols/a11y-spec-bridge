@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { search, type Source } from "@/lib/rag";
-import { generate, type ModelId, type UserRole } from "@/lib/llm";
+import { generate, type ModelId, type UserRole, type AnswerMode } from "@/lib/llm";
 import { checkRateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { question, model, role = "designer", k = 6, filterSource, history } = await req.json() as {
+    const { question, model, role = "designer", mode, k = 6, filterSource, history } = await req.json() as {
       question: string;
       model: ModelId;
       role?: UserRole;
+      mode?: AnswerMode;
       k?: number;
       filterSource?: Source;
       history?: { role: "user" | "assistant"; content: string }[];
     };
+    // 不正値は concise に丸める（デフォルトも concise = 結論ファースト）
+    const answerMode: AnswerMode = mode === "detailed" ? "detailed" : "concise";
 
     // ユーザー API キーはヘッダーから取得（ボディには含めない）
     const userApiKey = req.headers.get("x-user-api-key") ?? undefined;
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const llmRes = await generate(model, role, results, question, history, userApiKey);
+    const llmRes = await generate(model, role, results, question, history, userApiKey, answerMode);
 
     return NextResponse.json({
       answer: llmRes.answer,
