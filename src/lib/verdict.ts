@@ -10,10 +10,12 @@ export type ParsedVerdict = {
   body: string;     // 判定行を除いた残りの本文（Markdown）
 };
 
+// 警告マーカーは Unicode エスケープで明示（U+26A0 + 任意の異体字セレクタ U+FE0F）。
+// リテラル "⚠️?" はフォーマッタ等で U+FE0F が落ちると「絵文字自体が任意」の全文マッチに化けるため使わない
 const MARKERS: { re: RegExp; tier: VerdictTier }[] = [
   { re: /^(?:\*\*)?\s*✅/, tier: "ok" },
   { re: /^(?:\*\*)?\s*❌/, tier: "ng" },
-  { re: /^(?:\*\*)?\s*⚠️?/, tier: "warn" },
+  { re: /^(?:\*\*)?\s*\u26A0\uFE0F?/, tier: "warn" },
 ];
 
 export const VERDICT_LABEL: Record<VerdictTier, string> = {

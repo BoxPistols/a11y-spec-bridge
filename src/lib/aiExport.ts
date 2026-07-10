@@ -22,11 +22,12 @@ export type SessionFindings = {
   qaPairs: { question: string; answer: string }[];
 };
 
-const HTML_BLOCK_RE = /```html\n([\s\S]*?)```/g;
+const HTML_BLOCK_RE = /```html\r?\n([\s\S]*?)```/g;
 
 // ── 会話からの知見抽出 ────────────────────────────────
 export function extractFindings(session: ChatSession): SessionFindings {
-  const assistantMsgs = session.messages.filter(m => m.role === "assistant" && !m.error);
+  // 旧バージョンの localStorage / インポートデータでは messages が欠落している可能性がある
+  const assistantMsgs = (session.messages ?? []).filter(m => m.role === "assistant" && !m.error);
   const allText = assistantMsgs.map(m => m.content).join("\n\n");
 
   const wcagIds = validateWcagRefs(allText).valid;
@@ -58,7 +59,7 @@ export function extractFindings(session: ChatSession): SessionFindings {
 
   // Q&A ペア（user 発話と直後の assistant 回答）
   const qaPairs: SessionFindings["qaPairs"] = [];
-  const msgs = session.messages;
+  const msgs = session.messages ?? [];
   for (let i = 0; i < msgs.length - 1; i++) {
     if (msgs[i].role === "user" && msgs[i + 1].role === "assistant" && !msgs[i + 1].error) {
       qaPairs.push({ question: msgs[i].content, answer: msgs[i + 1].content });
@@ -93,7 +94,7 @@ const ACCURACY_RULES = `- WCAG 達成基準番号は WCAG 2.0/2.1/2.2 に実在�
 // デザイン判断の記録。仕様根拠つきでチームにそのまま共有できる
 export function buildDesignDoc(session: ChatSession): string {
   const f = extractFindings(session);
-  const date = session.createdAt.slice(0, 10);
+  const date = session.createdAt ? session.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
 
   const decisions = f.qaPairs
     .map((qa, i) => `### ${i + 1}. ${qa.question.trim()}\n\n${qa.answer.trim()}`)

@@ -1422,7 +1422,14 @@ const THINKING_STEPS = [
 function ThinkingBubble({ model }: { model: string }) {
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setStep(s => Math.min(s + 1, THINKING_STEPS.length - 1)), 2500);
+    // 最終ステップに達したらタイマーを止める（無駄な再レンダー防止）
+    const t = setInterval(() => {
+      setStep(s => {
+        if (s < THINKING_STEPS.length - 1) return s + 1;
+        clearInterval(t);
+        return s;
+      });
+    }, 2500);
     return () => clearInterval(t);
   }, []);
   return (
@@ -1435,7 +1442,9 @@ function ThinkingBubble({ model }: { model: string }) {
           <div className={styles.thinking}>
             <span /><span /><span />
           </div>
-          <span className={styles.thinkingLabel} aria-live="polite">{THINKING_STEPS[step]}</span>
+          {/* 進行ステップは視覚演出。SR には静的な1回通知のみ（aria-live の洪水防止） */}
+          <span className={styles.thinkingLabel} aria-hidden="true">{THINKING_STEPS[step]}</span>
+          <span className={styles.srOnly} role="status">回答を生成中</span>
         </div>
       </div>
     </div>
