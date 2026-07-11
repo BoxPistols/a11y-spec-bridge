@@ -101,6 +101,7 @@ export default function Page() {
   const [suggestTheme, setSuggestTheme] = useState<string | null>(null);
   const [showHelp,     setShowHelp]     = useState(false);
   const [sidebarOpen,  setSidebarOpen]  = useState(false); // モバイル: サイドバードロワー
+  const [isMobile,     setIsMobile]     = useState(false); // 768px 以下判定（入力欄の高さ制御に使用）
   const [inviteCode,   setInviteCode]   = useState("");
   const [inviteValid,  setInviteValid]  = useState<boolean | null>(null);
   const [quota,        setQuota]        = useState<{ remaining: number; limit: number } | null>(null);
@@ -152,6 +153,25 @@ export default function Page() {
   }, [userApiKey]);
 
   useEffect(() => { fetchQuota(inviteCode || undefined); }, [fetchQuota, inviteCode]);
+
+  // モバイル判定（リサイズにも追従）
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // 初期画面（ウェルカム）に戻る
+  const goHome = useCallback(() => {
+    setCurrentId(null);
+    setMessages([]);
+    setSidebarOpen(false);
+    setSuggestQ("");
+    setSuggestCat(null);
+    setSuggestTheme(null);
+  }, []);
 
   // モバイル: ドロワー展開中は Esc で閉じ、背面スクロールをロック
   useEffect(() => {
@@ -336,8 +356,9 @@ export default function Page() {
       {/* ── サイドバー（モバイルではドロワー） ── */}
       <aside className={styles.sidebar} data-open={sidebarOpen}>
 
-        {/* ロゴ */}
+        {/* ロゴ（クリックで初期画面に戻る） */}
         <div className={styles.brand}>
+          <button className={styles.brandBtn} onClick={goHome} title="最初の画面に戻る" aria-label="最初の画面に戻る">
           <div className={styles.brandMark}>
             <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
               <line x1="11" y1="7" x2="11" y2="24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -356,10 +377,11 @@ export default function Page() {
             <div className={styles.brandName}>SpecBridge</div>
             <div className={styles.brandSub}>Design × Spec Q&A</div>
           </div>
+          </button>
           {messages.length > 0 && (
             <button
               className={styles.newChatBtn}
-              onClick={() => { setCurrentId(null); setMessages([]); }}
+              onClick={goHome}
               title="新しい会話を開始"
               aria-label="新しい会話を開始"
             >
@@ -775,11 +797,13 @@ export default function Page() {
           >
             {ICO.menu}
           </button>
-          <div className={styles.mobileBrand}>SpecBridge</div>
+          <button className={styles.mobileBrand} onClick={goHome} title="最初の画面に戻る" aria-label="最初の画面に戻る">
+            SpecBridge
+          </button>
           {messages.length > 0 && (
             <button
               className={styles.mobileNewChat}
-              onClick={() => { setCurrentId(null); setMessages([]); }}
+              onClick={goHome}
               aria-label="新しい会話を開始"
             >
               {ICO.newChat}
@@ -998,7 +1022,7 @@ export default function Page() {
             </div>
             <textarea
               className={styles.textarea}
-              style={{ height: `${inputHeight}px` }}
+              style={isMobile ? undefined : { height: `${inputHeight}px` }}
               placeholder={role === "designer"
                 ? "デザインの判断・仕様の根拠を質問..."
                 : "実装・ARIAの使い方を質問..."
@@ -1017,7 +1041,7 @@ export default function Page() {
           </div>
           <div className={styles.inputHintRow}>
             <div className={styles.inputHint}>
-              ⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク
+              <span className={styles.kbdHint}>⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク</span>
               {!userApiKey && quota && (
                 <span className={`${styles.quotaBadge} ${quota.remaining <= 3 ? styles.quotaLow : ""}`}>
                   本日あと {quota.remaining}/{quota.limit} 回
@@ -1027,7 +1051,7 @@ export default function Page() {
             {messages.length > 0 && (
               <button
                 className={styles.newTopicBtn}
-                onClick={() => { setCurrentId(null); setMessages([]); }}
+                onClick={goHome}
                 title="現在の会話を終了して新しい話題を開始"
               >
                 {ICO.newChat}
