@@ -232,3 +232,25 @@ describe("mdToPlain", () => {
     expect(mdToPlain("[リンク](https://example.com)")).toBe("リンク");
   });
 });
+
+// ── headerSafe ──
+import { headerSafe } from "./helpers";
+
+describe("headerSafe", () => {
+  it("前後の空白と改行を除去する", () => {
+    expect(headerSafe("  sk-abc123\n")).toBe("sk-abc123");
+  });
+
+  it("全角文字・日本語を除去する（Safari の fetch ヘッダー例外対策）", () => {
+    expect(headerSafe("ｓｋ−abc")).toBe("abc");
+    expect(headerSafe("招待コード123")).toBe("123");
+  });
+
+  it("印字可能 ASCII はそのまま通す", () => {
+    expect(headerSafe("sk-proj_ABC-123.xyz~")).toBe("sk-proj_ABC-123.xyz~");
+  });
+
+  it("すべて不正文字なら空文字（ヘッダー自体を送らない判定に使う）", () => {
+    expect(headerSafe("　全角スペースのみ　")).toBe("");
+  });
+});

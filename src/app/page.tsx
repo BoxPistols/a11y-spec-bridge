@@ -9,7 +9,7 @@ import rehypeHighlight from "rehype-highlight";
 import Link from "next/link";
 import { SUGGEST_GROUPS, SUGGEST_THEMES, RECOMMEND } from "../lib/suggests";
 import { ICO, sz } from "../lib/icons";
-import { mdToPlain, downloadText, exportToFile, buildExportPayload, validateImport, MAX_SESSIONS } from "../lib/helpers";
+import { mdToPlain, downloadText, exportToFile, buildExportPayload, validateImport, headerSafe, MAX_SESSIONS } from "../lib/helpers";
 import { type WCAGResult } from "../lib/a11yUtils";
 import {
   buildPreviewSrcDoc,
@@ -142,8 +142,9 @@ export default function Page() {
   const fetchQuota = useCallback(async (code?: string) => {
     if (userApiKey) { setQuota(null); return; }
     try {
+      const safeCode = code ? headerSafe(code) : "";
       const res = await fetch("/api/quota", {
-        headers: code ? { "x-invite-code": code } : {},
+        headers: safeCode ? { "x-invite-code": safeCode } : {},
       });
       const data = await res.json();
       setQuota(data);
@@ -247,10 +248,13 @@ export default function Page() {
       .slice(-10)
       .map(m => ({ role: m.role, content: m.content }));
     try {
+      // ヘッダー値は ASCII のみ許容（全角・改行・空白混入で Safari の fetch が
+      // "The string did not match the expected pattern" を投げるのを防ぐ）
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (model === "gpt-5.4-mini" && userApiKey) headers["X-User-Api-Key"] = userApiKey;
-      else if (userApiKey) headers["X-User-Api-Key"] = userApiKey;
-      if (inviteCode) headers["x-invite-code"] = inviteCode;
+      const safeKey = headerSafe(userApiKey);
+      const safeInvite = headerSafe(inviteCode);
+      if (safeKey) headers["X-User-Api-Key"] = safeKey;
+      if (safeInvite) headers["x-invite-code"] = safeInvite;
 
       const res  = await fetch("/api/query", {
         method: "POST",
@@ -269,10 +273,17 @@ export default function Page() {
         tokens: data.tokens,
       }]);
     } catch (e: unknown) {
+      let msg = e instanceof Error ? e.message : String(e);
+      // ブラウザ由来の分かりにくいエラーを行動できる日本語に翻訳
+      if (/did not match the expected pattern/i.test(msg)) {
+        msg = "リクエストの組み立てに失敗しました。APIキーまたは招待コードに全角文字・空白・改行が含まれていないか確認してください。";
+      } else if (/failed to fetch|load failed|network/i.test(msg)) {
+        msg = "ネットワークに接続できませんでした。通信環境を確認して再試行してください。";
+      }
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `エラー: ${e instanceof Error ? e.message : String(e)}`,
+        content: `エラー: ${msg}`,
         error: true,
       }]);
     } finally {
@@ -930,7 +941,11 @@ export default function Page() {
                 onExpand={
                   // 最後の AI 回答にだけ深掘りボタンを出す（クイック回答の続きを読む導線）
                   !loading && !msg.error && msg.role === "assistant" && i === messages.length - 1 && msg.sources
-                    ? () => handleSubmit("直前の回答を、根拠仕様の引用・Good/Bad の視覚例・実装コード込みで詳しく展開してください", "detailed")
+                    ? () => handleSubmit(
+                        role === "designer"
+                          ? "直前の回答を、根拠仕様の引用と Good/Bad の視覚例、数値つきのデザイン仕様で詳しく展開してください"
+                          : "直前の回答を、根拠仕様の引用・Good/Bad の視覚例・実装コード込みで詳しく展開してください",
+                        "detailed")
                     : undefined
                 }
               />
@@ -1269,26 +1284,60 @@ function ContrastBadge({ wcag }: { wcag: WCAGResult }) {
   );
 }
 
-// ReactMarkdown の <pre> を差し替え、html コードブロックの直下にプレビューを挿入
-const mdComponents: Components = {
-  pre({ children, ...rest }) {
-    const child = Array.isArray(children) ? children[0] : children;
-    let lang = "";
-    let codeText = "";
-    if (child && typeof child === "object" && "props" in child) {
-      const cp = (child as { props: { className?: string; children?: unknown } }).props;
-      const m = /language-(\w+)/.exec(cp.className ?? "");
-      lang = m?.[1] ?? "";
-      codeText = extractText(cp.children).replace(/\n$/, "");
-    }
-    return (
-      <>
-        <pre {...rest}>{children}</pre>
-        {lang === "html" && <HtmlPreview code={codeText} />}
-      </>
-    );
-  },
-};
+// コード折りたたみ: デザイナーにはコードを見せず、見たい人だけ開ける
+function CodeToggle({ children }: { children: React.ReactNode }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className={styles.codeToggleWrap}>
+      <button
+        type="button"
+        className={styles.codeToggleBtn}
+        onClick={() => setShow(s => !s)}
+        aria-expanded={show}
+      >
+        {show ? "コードを隠す" : "</> 実装コードを表示（エンジニア向け）"}
+      </button>
+      {show && children}
+    </div>
+  );
+}
+
+// ReactMarkdown の <pre> を差し替える。
+// designer: コードは見せずプレビュー（見た目）だけを表示。コードは折りたたみの奥へ
+// engineer: 従来どおりコード + プレビュー
+function makeMdComponents(hideCode: boolean): Components {
+  return {
+    pre({ children, ...rest }) {
+      const child = Array.isArray(children) ? children[0] : children;
+      let lang = "";
+      let codeText = "";
+      if (child && typeof child === "object" && "props" in child) {
+        const cp = (child as { props: { className?: string; children?: unknown } }).props;
+        const m = /language-(\w+)/.exec(cp.className ?? "");
+        lang = m?.[1] ?? "";
+        codeText = extractText(cp.children).replace(/\n$/, "");
+      }
+      if (lang === "html") {
+        return hideCode ? (
+          <>
+            <HtmlPreview code={codeText} />
+            <CodeToggle><pre {...rest}>{children}</pre></CodeToggle>
+          </>
+        ) : (
+          <>
+            <pre {...rest}>{children}</pre>
+            <HtmlPreview code={codeText} />
+          </>
+        );
+      }
+      return hideCode
+        ? <CodeToggle><pre {...rest}>{children}</pre></CodeToggle>
+        : <pre {...rest}>{children}</pre>;
+    },
+  };
+}
+const MD_COMPONENTS_ENGINEER = makeMdComponents(false);
+const MD_COMPONENTS_DESIGNER = makeMdComponents(true);
 
 // ── サブコンポーネント ────────────────────────────────
 function MessageBubble({ msg, onExpand }: { msg: Message; onExpand?: () => void }) {
@@ -1384,6 +1433,8 @@ function MessageBubble({ msg, onExpand }: { msg: Message; onExpand?: () => void 
             )}
           </div>
           {(() => {
+            // デザイナーの回答ではコードを隠しプレビューだけ見せる（コード拒絶層への配慮）
+            const mdComponents = msg.userRole === "engineer" ? MD_COMPONENTS_ENGINEER : MD_COMPONENTS_DESIGNER;
             // クイック回答の判定行（✅/❌/⚠️）を色付きバナーに昇格。なければ従来描画
             const verdict = msg.error ? null : parseVerdict(msg.content);
             if (!verdict) {

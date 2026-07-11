@@ -3,6 +3,14 @@ import type { ChatSession } from "./types";
 // ── 定数 ──
 export const MAX_SESSIONS = 50;
 
+// ── HTTP ヘッダー値のサニタイズ ──
+// Safari は fetch のヘッダー値に非 ASCII・制御文字（全角文字、改行、貼り付け時の空白等）が
+// 含まれると "The string did not match the expected pattern" を投げる。
+// APIキー・招待コードは印字可能 ASCII のみ許容し、それ以外は落とす
+export function headerSafe(value: string): string {
+  return value.trim().replace(/[^\x21-\x7E]/g, "");
+}
+
 // ── Markdown → プレーンテキスト ──
 export function mdToPlain(md: string): string {
   return md
