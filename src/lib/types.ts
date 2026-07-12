@@ -1,5 +1,6 @@
 export type ModelId  = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
 export type UserRole = "designer" | "engineer";
+export type AnswerMode = "concise" | "detailed";
 export type SourceTag = "MDN" | "WCAG" | "WAI-ARIA" | "CUSTOM" | "CURATED";
 
 export type Source = {
@@ -20,6 +21,7 @@ export type Message = {
   userRole?: UserRole;
   sources?: Source[];
   tokens?: { input?: number; output?: number };
+  grounded?: boolean; // false = 仕様外・AIの一般知識に基づく回答
   error?: boolean;
 };
 

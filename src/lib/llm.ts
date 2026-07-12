@@ -9,6 +9,7 @@ import type { SearchResult } from "./rag";
 
 export type ModelId = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
 export type UserRole = "designer" | "engineer";
+export type AnswerMode = "concise" | "detailed";
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export type LLMResponse = {
@@ -18,16 +19,41 @@ export type LLMResponse = {
   outputTokens?: number;
 };
 
+// ── 回答モード別の分量ルール ──────────────────────────
+// concise: 結論ファースト・最小分量（デフォルト）。detailed: 従来の深掘り解説
+function buildModeRules(mode: AnswerMode): string {
+  if (mode === "concise") {
+    return `
+# 回答フォーマット（クイックモード・厳守）
+- 1行目は必ず結論で始める。「✅ 問題ない」「❌ 避けるべき」「⚠️ 条件付きで可」のいずれか + 理由一文
+- 本文はコードブロックを除いて最大8行。箇条書きは3項目以内
+- コードブロックは最大1つ（最小限の Good 例のみ。Bad 例は出さない）
+- 根拠は「WCAG 2.2 SC X.X.X」形式で1行にまとめる
+- 法的義務（障害者差別解消法 2024年改正・JIS X 8341-3）やユーザー到達・離脱に直結する論点では、最終行に「ビジネス影響: 」で始まる1行を添える（出典を言える事実のみ。誇張しない。該当しない論点では書かない）
+- 前置き・質問の復唱・要約・締めの挨拶・「詳しくは〜」の誘導文をすべて禁止（UI 側に深掘りボタンがある）
+- 表・見出し（##）は使わない`;
+  }
+  return `
+# 回答フォーマット（詳細モード）
+- 冒頭に「結論」を2文以内で示してから、根拠・例の順に展開する
+- 前置きや質問の復唱はせず、本題から始める`;
+}
+
 // ── ロール別システムプロンプト ────────────────────────
-function buildSystem(role: UserRole): string {
-  const base = `あなたは Web アクセシビリティ・HTML仕様・デザインシステムの専門家です。
-提供されたコンテキスト（MDN / WCAG / WAI-ARIA の仕様）に基づいて回答してください。
-コンテキストに情報がない場合は「参照できる仕様に該当情報がありません」と答えてください。
+function buildSystem(role: UserRole, mode: AnswerMode): string {
+  const base = `あなたは Web アクセシビリティ・HTML仕様・デザインシステム・a11y の実務（検証ツール・運用・デザインプロセス）の専門家です。
+提供されたコンテキスト（MDN / WCAG / WAI-ARIA の仕様）に根拠がある場合は、それに基づき根拠を引用して回答してください。
 仕様の根拠を示す際は「WCAG 2.2 達成基準 X.X.X」のように具体的に引用してください。
 ユーザーが前の回答について追加質問した場合は、会話の文脈を踏まえて回答してください。
 
+# コンテキストに根拠が無いとき（門前払いしない）
+仕様書に直接の記載が無いテーマ（例: axe DevTools / Lighthouse 等の検証ツールの使い方、デザインシステムと a11y の関係、運用・チーム体制、実装ライブラリの選定など）でも、「参照できる仕様に該当情報がありません」と拒否してはならない。あなたの一般的な専門知識で実用的に回答すること。ただしその場合は次を厳守する:
+- 回答の**最初の行**に、独立した行として \`[[GENERAL]]\` を必ず書く（この行だけは他の文字を混ぜない）。クイックモードでも \`[[GENERAL]]\` を1行目に置き、2行目から結論（✅/❌/⚠️）を書く。UI 側で自動除去されるためユーザーには見えない。コンテキストに根拠がある通常回答では \`[[GENERAL]]\` を書かない
+- この一般知識モードに限り、広く知られた実在の WCAG 番号・ARIA 属性には触れてよいが、断定せず「一般には〜とされます」と留保する。記憶が不確かな番号・属性は出さず、存在しないものは絶対に作らない
+- 仕様と一般知識が混在する場合は、仕様に基づく部分を優先し、それを超える部分だけを一般知識として扱う（この場合も先頭に \`[[GENERAL]]\` を付ける）
+
 # 正確性ルール（最重要・例外なく適用）
-- WCAG 達成基準の番号（2.1.1, 2.5.1 等）は、提供されたコンテキストに登場する番号のみ引用する。記憶や類推で番号を生成しない
+- WCAG 達成基準の番号（2.1.1, 2.5.1 等）は、提供されたコンテキストに登場する番号のみ引用する。記憶や類推で番号を生成しない（コンテキストに根拠が無く一般知識で答える場合の扱いは上記「コンテキストに根拠が無いとき」に従う）
 - ARIA 属性・ロールは現行の WAI-ARIA 仕様（1.2 以降）に存在するもののみ使用する。不確かな属性は使わず、別表現で説明する
 - キーボード操作を説明する際は、複合操作（モード切替・移動・選択を伴うもの）ではフルパスで記述する。単純な押下（Tab → Enter で完結する操作など）はその範囲のみで簡潔に答えてよい。複合操作の場合は途中の手順を省略しない:
   1. Tab で該当要素にフォーカスを移動
@@ -36,13 +62,33 @@ function buildSystem(role: UserRole): string {
   4. Space または Enter で確定
   5. Esc でキャンセル
 - UI のヒントテキストやラベルを HTML サンプルに含める場合、前提となる Tab フォーカス手順も併記する（"[Spaceで選択]" だけにせず "[Tab→Space]" のように示す）
-- 数値（コントラスト比・サイズ・距離等）は手計算で出さない。視覚論点では UI 側でランタイム実測されるため hex 色指定のみ書く。物理寸法は仕様の引用として書く（例: "44x44pt (iOS HIG)"、"48dp (Material)"）`;
+- 数値（コントラスト比・サイズ・距離等）は手計算で出さない。視覚論点では UI 側でランタイム実測されるため hex 色指定のみ書く。物理寸法は仕様の引用として書く（例: "44x44pt (iOS HIG)"、"48dp (Material)"）
+${buildModeRules(mode)}`;
+
+  if (role === "designer" && mode === "concise") {
+    return `${base}
+
+回答対象はUIUXデザイナーです。デザイナーの本業はビジネスゴール設定・要件定義であり、アクセシビリティは優先度が上がりにくく、HTML/CSS のコードは読みたくない前提で答えてください。「デザインの判断にどう影響するか」を簡潔に、必要なら要件定義・チケットにそのまま書ける表現で答えます。
+
+# デザイン言語で話す（重要）
+- 本文の説明文では HTML タグ名・CSS プロパティ名・属性名を使わない。デザイン用語と数値で書く（例: 「outline: 2px」ではなく「フォーカスリングは2pxの線で、背景から浮くように2px外側にずらす」）
+- 寸法・色・状態はデザイン仕様として書く（例: 「タップ領域は最小44x44pt」「押下時は背景を1段暗く」）
+- 視覚的な論点（コントラスト・フォーカスリング・タッチターゲット等）では、最小の Good サンプルを html コードブロック1つで示す。これは UI 側で「見た目のプレビュー」に変換され、デザイナーにはコード自体は表示されない。自己完結・インラインstyle・色は #hex 形式・外部リソース禁止・font-family: -apple-system,BlinkMacSystemFont,sans-serif
+- コントラスト比の数値は書かない（UI 側で自動実測される）。視覚比較が不要な論点ではコードを出さずテキストのみで答える`;
+  }
+
+  if (role === "engineer" && mode === "concise") {
+    return `${base}
+
+回答対象はフロントエンドエンジニアです。コピペで使える最小の正解コード1つ + 根拠1行を優先してください。ブラウザ/スクリーンリーダーの注意点は、判断が変わる場合のみ1行で添える。`;
+  }
 
   if (role === "designer") {
     return `${base}
 
-回答対象はUIUXデザイナーです。以下を心がけてください:
+回答対象はUIUXデザイナーです。HTML/CSS のコードは読みたくない前提で、以下を心がけてください:
 - 技術的な実装詳細より「デザインの判断にどう影響するか」を中心に説明する
+- 本文の説明文では HTML タグ名・CSS プロパティ名を使わず、デザイン用語と数値で書く（html コードブロックは UI 側で見た目のプレビューに変換されるため、コードを読ませる前提で説明しない）
 - 「このコンポーネントはこのシナリオで使うべき / 使うべきでない」を明確にする
 - アクセシビリティ要件をデザイン仕様として具体的に表現する（例: フォーカスリングは最低3pxのアウトライン）
 
@@ -138,6 +184,7 @@ function buildContext(results: SearchResult[]): string {
 async function callOpenAI(
   model: "gpt-5.4-nano" | "gpt-5.4-mini",
   role: UserRole,
+  mode: AnswerMode,
   context: string,
   question: string,
   history?: ChatMessage[],
@@ -150,7 +197,7 @@ async function callOpenAI(
   if (!apiKey) throw new Error("API キーが設定されていません");
   const client = new OpenAI({ apiKey });
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: "system", content: buildSystem(role) },
+    { role: "system", content: buildSystem(role, mode) },
   ];
   // 会話履歴（最新の質問を除く過去分）
   if (history && history.length > 1) {
@@ -178,6 +225,7 @@ async function callOpenAI(
 // ── Gemini ────────────────────────────────────────────
 async function callGemini(
   role: UserRole,
+  mode: AnswerMode,
   context: string,
   question: string,
   history?: ChatMessage[]
@@ -185,7 +233,7 @@ async function callGemini(
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? "");
   const m = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
-    systemInstruction: buildSystem(role),
+    systemInstruction: buildSystem(role, mode),
   });
   // 会話履歴付きチャット
   const chat = m.startChat({
@@ -214,15 +262,16 @@ export async function generate(
   results: SearchResult[],
   question: string,
   history?: ChatMessage[],
-  userApiKey?: string
+  userApiKey?: string,
+  mode: AnswerMode = "concise"
 ): Promise<LLMResponse> {
   const context = buildContext(results);
   switch (modelId) {
     case "gpt-5.4-nano":
     case "gpt-5.4-mini":
-      return callOpenAI(modelId, role, context, question, history, userApiKey);
+      return callOpenAI(modelId, role, mode, context, question, history, userApiKey);
     case "gemini-2.5-flash":
-      return callGemini(role, context, question, history);
+      return callGemini(role, mode, context, question, history);
     default:
       throw new Error(`Unknown model: ${modelId}`);
   }

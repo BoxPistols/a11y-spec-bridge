@@ -3,6 +3,31 @@ import type { ChatSession } from "./types";
 // ── 定数 ──
 export const MAX_SESSIONS = 50;
 
+// ── グラウンディング判定 ──
+// LLM は仕様コンテキストに根拠が無く一般知識で答えるとき、回答の先頭行に
+// センチネル [[GENERAL]] を出力する。サーバ側でこれを剥がして grounded=false を判定し、
+// UI で「AIの一般知識（仕様外）」と明示する。閾値の推測に頼らず門前払いもしない方式。
+// センチネルは行頭に来る想定だが、モデルが結論行(✅/❌)を先に置くなど位置がぶれても
+// 生の [[GENERAL]] が本文へ漏れないよう、出現箇所を問わず検出・全除去する
+export function parseGrounding(answer: string): { grounded: boolean; answer: string } {
+  if (/\[\[GENERAL\]\]/i.test(answer)) {
+    const cleaned = answer
+      .replace(/\[\[GENERAL\]\]/gi, "")
+      .replace(/^\s+/, "")        // 先頭に残った空行・空白を除去
+      .replace(/\n{3,}/g, "\n\n"); // センチネル除去で空いた空行を詰める
+    return { grounded: false, answer: cleaned };
+  }
+  return { grounded: true, answer };
+}
+
+// ── HTTP ヘッダー値のサニタイズ ──
+// Safari は fetch のヘッダー値に非 ASCII・制御文字（全角文字、改行、貼り付け時の空白等）が
+// 含まれると "The string did not match the expected pattern" を投げる。
+// APIキー・招待コードは印字可能 ASCII のみ許容し、それ以外は落とす
+export function headerSafe(value: string): string {
+  return value.trim().replace(/[^\x21-\x7E]/g, "");
+}
+
 // ── Markdown → プレーンテキスト ──
 export function mdToPlain(md: string): string {
   return md

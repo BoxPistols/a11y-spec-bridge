@@ -9,7 +9,7 @@ import rehypeHighlight from "rehype-highlight";
 import Link from "next/link";
 import { SUGGEST_GROUPS, SUGGEST_THEMES, RECOMMEND } from "../lib/suggests";
 import { ICO, sz } from "../lib/icons";
-import { mdToPlain, downloadText, exportToFile, buildExportPayload, validateImport, MAX_SESSIONS } from "../lib/helpers";
+import { mdToPlain, downloadText, exportToFile, buildExportPayload, validateImport, headerSafe, MAX_SESSIONS } from "../lib/helpers";
 import { type WCAGResult } from "../lib/a11yUtils";
 import {
   buildPreviewSrcDoc,
@@ -27,7 +27,9 @@ import { validateAriaAttrs } from "../lib/ariaValidate";
 import { validateWcagRefs } from "../lib/wcagValidate";
 import { validateKeyboardCompleteness } from "../lib/keyboardValidate";
 import { validateCssProps } from "../lib/cssValidate";
-import type { ModelId, UserRole, SourceTag, Source, Message, ChatSession } from "../lib/types";
+import { EXPORT_META } from "../lib/aiExport";
+import { parseVerdict, VERDICT_LABEL } from "../lib/verdict";
+import type { ModelId, UserRole, AnswerMode, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
 type ModelTier = "free" | "byok"; // byok = bring your own key
@@ -61,25 +63,27 @@ function saveSessions(sessions: ChatSession[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 }
 
-function loadPrefs(): { role: UserRole; model: ModelId } {
-  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.4-nano" };
+function loadPrefs(): { role: UserRole; model: ModelId; mode: AnswerMode } {
+  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.4-nano", mode: "concise" };
   try {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}");
     return {
       role: (["designer", "engineer"] as UserRole[]).includes(p.role) ? p.role : "designer",
       model: MODELS.some(m => m.id === p.model) ? p.model : "gemini-2.5-flash",
+      mode: p.mode === "detailed" ? "detailed" : "concise",
     };
-  } catch { return { role: "designer", model: "gpt-5.4-nano" }; }
+  } catch { return { role: "designer", model: "gpt-5.4-nano", mode: "concise" }; }
 }
 
-function savePrefs(role: UserRole, model: ModelId) {
-  localStorage.setItem(PREFS_KEY, JSON.stringify({ role, model }));
+function savePrefs(role: UserRole, model: ModelId, mode: AnswerMode) {
+  localStorage.setItem(PREFS_KEY, JSON.stringify({ role, model, mode }));
 }
 
 // ── コンポーネント ────────────────────────────────────
 export default function Page() {
   const [role,       setRole]       = useState<UserRole>("designer");
   const [model,      setModel]      = useState<ModelId>("gpt-5.4-nano");
+  const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [messages,   setMessages]   = useState<Message[]>([]);
   const [input,      setInput]      = useState("");
   const [loading,    setLoading]    = useState(false);
@@ -96,6 +100,8 @@ export default function Page() {
   const [suggestCat,   setSuggestCat]   = useState<string | null>(null);
   const [suggestTheme, setSuggestTheme] = useState<string | null>(null);
   const [showHelp,     setShowHelp]     = useState(false);
+  const [sidebarOpen,  setSidebarOpen]  = useState(false); // モバイル: サイドバードロワー
+  const [isMobile,     setIsMobile]     = useState(false); // 768px 以下判定（入力欄の高さ制御に使用）
   const [inviteCode,   setInviteCode]   = useState("");
   const [inviteValid,  setInviteValid]  = useState<boolean | null>(null);
   const [quota,        setQuota]        = useState<{ remaining: number; limit: number } | null>(null);
@@ -115,6 +121,7 @@ export default function Page() {
     const prefs = loadPrefs();
     setRole(prefs.role);
     setModel(prefs.model);
+    setAnswerMode(prefs.mode);
     // ユーザー API キー読み込み
     setUserApiKey(localStorage.getItem("specbridge-user-apikey") ?? "");
     // 招待コード読み込み
@@ -136,8 +143,9 @@ export default function Page() {
   const fetchQuota = useCallback(async (code?: string) => {
     if (userApiKey) { setQuota(null); return; }
     try {
+      const safeCode = code ? headerSafe(code) : "";
       const res = await fetch("/api/quota", {
-        headers: code ? { "x-invite-code": code } : {},
+        headers: safeCode ? { "x-invite-code": safeCode } : {},
       });
       const data = await res.json();
       setQuota(data);
@@ -145,6 +153,38 @@ export default function Page() {
   }, [userApiKey]);
 
   useEffect(() => { fetchQuota(inviteCode || undefined); }, [fetchQuota, inviteCode]);
+
+  // モバイル判定（リサイズにも追従）
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // 初期画面（ウェルカム）に戻る
+  const goHome = useCallback(() => {
+    setCurrentId(null);
+    setMessages([]);
+    setSidebarOpen(false);
+    setSuggestQ("");
+    setSuggestCat(null);
+    setSuggestTheme(null);
+  }, []);
+
+  // モバイル: ドロワー展開中は Esc で閉じ、背面スクロールをロック
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSidebarOpen(false); };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [sidebarOpen]);
 
   function toggleTheme() {
     const next = theme === "light" ? "dark" : "light";
@@ -183,7 +223,7 @@ export default function Page() {
   }, [inputHeight]);
 
   // 設定変更時に保存
-  useEffect(() => { savePrefs(role, model); }, [role, model]);
+  useEffect(() => { savePrefs(role, model, answerMode); }, [role, model, answerMode]);
 
   // メッセージ変更時に自動保存
   useEffect(() => {
@@ -213,8 +253,9 @@ export default function Page() {
   }, []);
 
   // ── 質問送信 ──────────────────────────────────────
-  async function handleSubmit(q?: string) {
+  async function handleSubmit(q?: string, forceMode?: AnswerMode) {
     const question = (q ?? input).trim();
+    const mode = forceMode ?? answerMode;
     if (!question || loading) return;
     const newMsg: Message = { id: Date.now().toString(), role: "user", content: question, userRole: role };
     const updatedMessages = [...messages, newMsg];
@@ -227,15 +268,18 @@ export default function Page() {
       .slice(-10)
       .map(m => ({ role: m.role, content: m.content }));
     try {
+      // ヘッダー値は ASCII のみ許容（全角・改行・空白混入で Safari の fetch が
+      // "The string did not match the expected pattern" を投げるのを防ぐ）
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (model === "gpt-5.4-mini" && userApiKey) headers["X-User-Api-Key"] = userApiKey;
-      else if (userApiKey) headers["X-User-Api-Key"] = userApiKey;
-      if (inviteCode) headers["x-invite-code"] = inviteCode;
+      const safeKey = headerSafe(userApiKey);
+      const safeInvite = headerSafe(inviteCode);
+      if (safeKey) headers["X-User-Api-Key"] = safeKey;
+      if (safeInvite) headers["x-invite-code"] = safeInvite;
 
       const res  = await fetch("/api/query", {
         method: "POST",
         headers,
-        body: JSON.stringify({ question, model, role, k: 6, history }),
+        body: JSON.stringify({ question, model, role, mode, k: 6, history }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -247,12 +291,20 @@ export default function Page() {
         userRole: role,
         sources: data.sources,
         tokens: data.tokens,
+        grounded: data.grounded,
       }]);
     } catch (e: unknown) {
+      let msg = e instanceof Error ? e.message : String(e);
+      // ブラウザ由来の分かりにくいエラーを行動できる日本語に翻訳
+      if (/did not match the expected pattern/i.test(msg)) {
+        msg = "リクエストの組み立てに失敗しました。APIキーまたは招待コードに全角文字・空白・改行が含まれていないか確認してください。";
+      } else if (/failed to fetch|load failed|network/i.test(msg)) {
+        msg = "ネットワークに接続できませんでした。通信環境を確認して再試行してください。";
+      }
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `エラー: ${e instanceof Error ? e.message : String(e)}`,
+        content: `エラー: ${msg}`,
         error: true,
       }]);
     } finally {
@@ -299,11 +351,15 @@ export default function Page() {
   return (
     <div className={styles.layout}>
 
-      {/* ── サイドバー ── */}
-      <aside className={styles.sidebar}>
+      {/* ── モバイル: サイドバー背面のバックドロップ ── */}
+      {sidebarOpen && <div className={styles.backdrop} onClick={() => setSidebarOpen(false)} aria-hidden="true" />}
 
-        {/* ロゴ */}
+      {/* ── サイドバー（モバイルではドロワー） ── */}
+      <aside className={styles.sidebar} data-open={sidebarOpen}>
+
+        {/* ロゴ（クリックで初期画面に戻る） */}
         <div className={styles.brand}>
+          <button className={styles.brandBtn} onClick={goHome} title="最初の画面に戻る" aria-label="最初の画面に戻る">
           <div className={styles.brandMark}>
             <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
               <line x1="11" y1="7" x2="11" y2="24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -322,16 +378,25 @@ export default function Page() {
             <div className={styles.brandName}>SpecBridge</div>
             <div className={styles.brandSub}>Design × Spec Q&A</div>
           </div>
+          </button>
           {messages.length > 0 && (
             <button
               className={styles.newChatBtn}
-              onClick={() => { setCurrentId(null); setMessages([]); }}
+              onClick={goHome}
               title="新しい会話を開始"
               aria-label="新しい会話を開始"
             >
               {ICO.newChat}
             </button>
           )}
+          {/* モバイル: ドロワーを閉じる */}
+          <button
+            className={styles.sidebarClose}
+            onClick={() => setSidebarOpen(false)}
+            aria-label="メニューを閉じる"
+          >
+            {ICO.close}
+          </button>
         </div>
 
         {/* ロール選択 */}
@@ -489,6 +554,37 @@ export default function Page() {
           />
         </div>
 
+        {/* ワークフロー連携エクスポート */}
+        <div className={styles.sideSection}>
+          <div className={styles.sideLabel}>ワークフロー連携 <HelpTip text="この会話を、普段の業務にそのまま流し込める形で出力します。ビジネス根拠資料はステークホルダー説明・要件定義に、受け入れ基準はチケットの Done 定義に貼れます。Claude Code の Skill / サブエージェントとして置けば、アクセシビリティを意識しなくても AI コーディング時に自動でレビューが効きます。" /></div>
+          {messages.length > 0 ? (
+            <div className={styles.exportList}>
+              {EXPORT_META.map(ex => (
+                <button
+                  key={ex.kind}
+                  className={styles.exportBtn}
+                  title={ex.desc}
+                  onClick={() => {
+                    const session: ChatSession = {
+                      id: currentId ?? "current",
+                      title: messages.find(m => m.role === "user")?.content.slice(0, 40) ?? "会話",
+                      messages,
+                      role,
+                      createdAt: new Date().toISOString(),
+                    };
+                    downloadText(ex.build(session), ex.filename);
+                  }}
+                >
+                  {ICO.download}
+                  <span>{ex.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.exportEmpty}>会話すると、ビジネス根拠資料・受け入れ基準・Claude Code Skill などをここから生成できます</div>
+          )}
+        </div>
+
         {/* 履歴 */}
         <div className={styles.sideSection}>
           <div className={styles.historyHeader}>
@@ -564,6 +660,7 @@ export default function Page() {
                     setCurrentId(s.id);
                     setMessages(s.messages);
                     setRole(s.role);
+                    setSidebarOpen(false); // モバイル: 選択したらドロワーを閉じる
                   }}
                 >
                   <span className={styles.historyTitle}>{s.title}</span>
@@ -691,6 +788,29 @@ export default function Page() {
 
       {/* ── メイン ── */}
       <main className={styles.main}>
+
+        {/* ── モバイル: 上部バー（ハンバーガー + ブランド） ── */}
+        <div className={styles.mobileBar}>
+          <button
+            className={styles.hamburger}
+            onClick={() => setSidebarOpen(true)}
+            aria-label="メニューを開く"
+          >
+            {ICO.menu}
+          </button>
+          <button className={styles.mobileBrand} onClick={goHome} title="最初の画面に戻る" aria-label="最初の画面に戻る">
+            SpecBridge
+          </button>
+          {messages.length > 0 && (
+            <button
+              className={styles.mobileNewChat}
+              onClick={goHome}
+              aria-label="新しい会話を開始"
+            >
+              {ICO.newChat}
+            </button>
+          )}
+        </div>
 
         {/* ── メッセージエリア ── */}
         <div className={styles.messages}>
@@ -839,8 +959,21 @@ export default function Page() {
               )}
             </div>
           ) : (
-            messages.map(msg => (
-              <MessageBubble key={msg.id} msg={msg} />
+            messages.map((msg, i) => (
+              <MessageBubble
+                key={msg.id}
+                msg={msg}
+                onExpand={
+                  // 最後の AI 回答にだけ深掘りボタンを出す（クイック回答の続きを読む導線）
+                  !loading && !msg.error && msg.role === "assistant" && i === messages.length - 1 && msg.sources
+                    ? () => handleSubmit(
+                        role === "designer"
+                          ? "直前の回答を、根拠仕様の引用と Good/Bad の視覚例、数値つきのデザイン仕様で詳しく展開してください"
+                          : "直前の回答を、根拠仕様の引用・Good/Bad の視覚例・実装コード込みで詳しく展開してください",
+                        "detailed")
+                    : undefined
+                }
+              />
             ))
           )}
           {loading && <ThinkingBubble model={model} />}
@@ -866,9 +999,31 @@ export default function Page() {
                 <><svg {...sz(12)}><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Engineer</>
               )}
             </div>
+            <div className={styles.modeSwitch} role="group" aria-label="回答の詳しさ">
+              <button
+                type="button"
+                className={styles.modeBtn}
+                data-active={answerMode === "concise"}
+                aria-pressed={answerMode === "concise"}
+                onClick={() => setAnswerMode("concise")}
+                title="結論ファーストの短い回答（8行以内）。足りなければ回答下の「詳しく展開」で深掘り"
+              >
+                ⚡ クイック
+              </button>
+              <button
+                type="button"
+                className={styles.modeBtn}
+                data-active={answerMode === "detailed"}
+                aria-pressed={answerMode === "detailed"}
+                onClick={() => setAnswerMode("detailed")}
+                title="Good/Bad 視覚例・仕様引用込みの深掘り回答"
+              >
+                📖 じっくり
+              </button>
+            </div>
             <textarea
               className={styles.textarea}
-              style={{ height: `${inputHeight}px` }}
+              style={isMobile ? undefined : { height: `${inputHeight}px` }}
               placeholder={role === "designer"
                 ? "デザインの判断・仕様の根拠を質問..."
                 : "実装・ARIAの使い方を質問..."
@@ -887,7 +1042,7 @@ export default function Page() {
           </div>
           <div className={styles.inputHintRow}>
             <div className={styles.inputHint}>
-              ⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク
+              <span className={styles.kbdHint}>⌘+Enter で送信 · Enter で改行 · 出典は仕様書へリンク</span>
               {!userApiKey && quota && (
                 <span className={`${styles.quotaBadge} ${quota.remaining <= 3 ? styles.quotaLow : ""}`}>
                   本日あと {quota.remaining}/{quota.limit} 回
@@ -897,7 +1052,7 @@ export default function Page() {
             {messages.length > 0 && (
               <button
                 className={styles.newTopicBtn}
-                onClick={() => { setCurrentId(null); setMessages([]); }}
+                onClick={goHome}
                 title="現在の会話を終了して新しい話題を開始"
               >
                 {ICO.newChat}
@@ -1154,29 +1309,63 @@ function ContrastBadge({ wcag }: { wcag: WCAGResult }) {
   );
 }
 
-// ReactMarkdown の <pre> を差し替え、html コードブロックの直下にプレビューを挿入
-const mdComponents: Components = {
-  pre({ children, ...rest }) {
-    const child = Array.isArray(children) ? children[0] : children;
-    let lang = "";
-    let codeText = "";
-    if (child && typeof child === "object" && "props" in child) {
-      const cp = (child as { props: { className?: string; children?: unknown } }).props;
-      const m = /language-(\w+)/.exec(cp.className ?? "");
-      lang = m?.[1] ?? "";
-      codeText = extractText(cp.children).replace(/\n$/, "");
-    }
-    return (
-      <>
-        <pre {...rest}>{children}</pre>
-        {lang === "html" && <HtmlPreview code={codeText} />}
-      </>
-    );
-  },
-};
+// コード折りたたみ: デザイナーにはコードを見せず、見たい人だけ開ける
+function CodeToggle({ children }: { children: React.ReactNode }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className={styles.codeToggleWrap}>
+      <button
+        type="button"
+        className={styles.codeToggleBtn}
+        onClick={() => setShow(s => !s)}
+        aria-expanded={show}
+      >
+        {show ? "コードを隠す" : "</> 実装コードを表示（エンジニア向け）"}
+      </button>
+      {show && children}
+    </div>
+  );
+}
+
+// ReactMarkdown の <pre> を差し替える。
+// designer: コードは見せずプレビュー（見た目）だけを表示。コードは折りたたみの奥へ
+// engineer: 従来どおりコード + プレビュー
+function makeMdComponents(hideCode: boolean): Components {
+  return {
+    pre({ children, ...rest }) {
+      const child = Array.isArray(children) ? children[0] : children;
+      let lang = "";
+      let codeText = "";
+      if (child && typeof child === "object" && "props" in child) {
+        const cp = (child as { props: { className?: string; children?: unknown } }).props;
+        const m = /language-(\w+)/.exec(cp.className ?? "");
+        lang = m?.[1] ?? "";
+        codeText = extractText(cp.children).replace(/\n$/, "");
+      }
+      if (lang === "html") {
+        return hideCode ? (
+          <>
+            <HtmlPreview code={codeText} />
+            <CodeToggle><pre {...rest}>{children}</pre></CodeToggle>
+          </>
+        ) : (
+          <>
+            <pre {...rest}>{children}</pre>
+            <HtmlPreview code={codeText} />
+          </>
+        );
+      }
+      return hideCode
+        ? <CodeToggle><pre {...rest}>{children}</pre></CodeToggle>
+        : <pre {...rest}>{children}</pre>;
+    },
+  };
+}
+const MD_COMPONENTS_ENGINEER = makeMdComponents(false);
+const MD_COMPONENTS_DESIGNER = makeMdComponents(true);
 
 // ── サブコンポーネント ────────────────────────────────
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({ msg, onExpand }: { msg: Message; onExpand?: () => void }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState<"copy" | "dl" | null>(null);
@@ -1225,6 +1414,14 @@ function MessageBubble({ msg }: { msg: Message }) {
                 {msg.tokens.input}↑ {msg.tokens.output}↓ tokens
               </span>
             )}
+            {msg.grounded === false && !msg.error && (
+              <span
+                className={styles.generalBadge}
+                title="この回答は仕様書（WCAG/WAI-ARIA/MDN）に直接の根拠がなく、AI の一般知識に基づきます。WCAG 番号や具体値は必ず一次情報で確認してください。"
+              >
+                AIの一般知識（仕様外）
+              </span>
+            )}
             <AriaCheckBadge content={msg.content} />
             <WcagCheckBadge content={msg.content} />
             <KeyboardCheckBadge content={msg.content} />
@@ -1268,9 +1465,42 @@ function MessageBubble({ msg }: { msg: Message }) {
               </div>
             )}
           </div>
-          <div className={styles.aiText}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>{msg.content}</ReactMarkdown>
-          </div>
+          {(() => {
+            // デザイナーの回答ではコードを隠しプレビューだけ見せる（コード拒絶層への配慮）
+            const mdComponents = msg.userRole === "engineer" ? MD_COMPONENTS_ENGINEER : MD_COMPONENTS_DESIGNER;
+            // クイック回答の判定行（✅/❌/⚠️）を色付きバナーに昇格。なければ従来描画
+            const verdict = msg.error ? null : parseVerdict(msg.content);
+            if (!verdict) {
+              return (
+                <div className={styles.aiText}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>{msg.content}</ReactMarkdown>
+                </div>
+              );
+            }
+            return (
+              <>
+                <div className={styles.verdictBanner} data-tier={verdict.tier}>
+                  <span className={styles.verdictChip}>{VERDICT_LABEL[verdict.tier]}</span>
+                  <span className={styles.verdictHeadline}>{verdict.headline}</span>
+                </div>
+                {verdict.body && (
+                  <div className={styles.aiText}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={mdComponents}>{verdict.body}</ReactMarkdown>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+          {onExpand && (
+            <button
+              className={styles.expandBtn}
+              onClick={onExpand}
+              title="この回答を根拠仕様・視覚例・実装コード込みで深掘り"
+            >
+              {ICO.learn}
+              <span>詳しく展開</span>
+            </button>
+          )}
           {msg.sources && msg.sources.length > 0 && (
             <div className={styles.sourcesWrap}>
               <button className={styles.sourcesToggle} onClick={() => setOpen(o => !o)} title={open ? "参照仕様を閉じる" : "参照仕様を展開"}>
@@ -1313,15 +1543,39 @@ function SourceCard({ source }: { source: { source: SourceTag; title: string; se
   );
 }
 
+// 処理の進み具合を言葉で見せる（コードに関心がない人にも「何をしているか」が伝わる）
+const THINKING_STEPS = [
+  "仕様データベースを検索中...",
+  "WCAG / WAI-ARIA / MDN を照合中...",
+  "根拠を整理して回答を作成中...",
+];
+
 function ThinkingBubble({ model }: { model: string }) {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    // 最終ステップに達したらタイマーを止める（無駄な再レンダー防止）
+    const t = setInterval(() => {
+      setStep(s => {
+        if (s < THINKING_STEPS.length - 1) return s + 1;
+        clearInterval(t);
+        return s;
+      });
+    }, 2500);
+    return () => clearInterval(t);
+  }, []);
   return (
     <div className={`${styles.msg} ${styles.assistant}`}>
       <div className={styles.aiBubble}>
         <div className={styles.aiHeader}>
           <span className={styles.aiModel}>{model}</span>
         </div>
-        <div className={styles.thinking}>
-          <span /><span /><span />
+        <div className={styles.thinkingRow}>
+          <div className={styles.thinking}>
+            <span /><span /><span />
+          </div>
+          {/* 進行ステップは視覚演出。SR には静的な1回通知のみ（aria-live の洪水防止） */}
+          <span className={styles.thinkingLabel} aria-hidden="true">{THINKING_STEPS[step]}</span>
+          <span className={styles.srOnly} role="status">回答を生成中</span>
         </div>
       </div>
     </div>

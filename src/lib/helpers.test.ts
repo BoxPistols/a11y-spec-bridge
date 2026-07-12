@@ -54,7 +54,7 @@ describe("buildExportPayload", () => {
       id: "m1",
       role: "assistant",
       content: "回答",
-      sources: [{ title: "仕様書", url: "https://example.com" }],
+      sources: [{ id: "src1", score: 0.9, source: "WCAG", title: "仕様書", section: "1.1.1", url: "https://example.com", snippet: "..." }],
       tokens: { input: 100, output: 200 },
     };
     const sessions = [makeSession({ messages: [makeMsgUser("質問"), msg] })];
@@ -230,5 +230,64 @@ describe("mdToPlain", () => {
   });
   it("リンクをテキストに変換する", () => {
     expect(mdToPlain("[リンク](https://example.com)")).toBe("リンク");
+  });
+});
+
+// ── parseGrounding ──
+import { parseGrounding } from "./helpers";
+
+describe("parseGrounding", () => {
+  it("先頭センチネル [[GENERAL]] を検出し grounded=false + 除去する", () => {
+    const r = parseGrounding("[[GENERAL]]\n✅ axe DevTools は拡張機能です。");
+    expect(r.grounded).toBe(false);
+    expect(r.answer).toBe("✅ axe DevTools は拡張機能です。");
+  });
+
+  it("センチネルが無ければ grounded=true で本文そのまま", () => {
+    const r = parseGrounding("✅ WCAG 2.2 SC 1.4.3 に基づきます。");
+    expect(r.grounded).toBe(true);
+    expect(r.answer).toBe("✅ WCAG 2.2 SC 1.4.3 に基づきます。");
+  });
+
+  it("センチネル前後の空白・改行揺れを吸収する", () => {
+    expect(parseGrounding("  [[GENERAL]]  \n本文").grounded).toBe(false);
+    expect(parseGrounding("[[general]]\n本文").grounded).toBe(false); // 大小文字許容
+    expect(parseGrounding("[[GENERAL]] 本文").answer).toBe("本文");
+  });
+
+  it("結論行を先に置くモデルでも、位置を問わずセンチネルを除去し grounded=false にする", () => {
+    // concise モードで verdict 行が先、[[GENERAL]] が後に来ても漏らさない
+    const r = parseGrounding("✅ axe は拡張機能です。\n[[GENERAL]]");
+    expect(r.grounded).toBe(false);
+    expect(r.answer).not.toContain("[[GENERAL]]");
+    expect(r.answer.startsWith("✅")).toBe(true);
+  });
+
+  it("センチネルを全除去し、生の文字列を本文へ漏らさない", () => {
+    const r = parseGrounding("[[GENERAL]]\n本文に [[GENERAL]] が二重に出ても除去");
+    expect(r.answer).not.toContain("[[GENERAL]]");
+    expect(r.grounded).toBe(false);
+  });
+});
+
+// ── headerSafe ──
+import { headerSafe } from "./helpers";
+
+describe("headerSafe", () => {
+  it("前後の空白と改行を除去する", () => {
+    expect(headerSafe("  sk-abc123\n")).toBe("sk-abc123");
+  });
+
+  it("全角文字・日本語を除去する（Safari の fetch ヘッダー例外対策）", () => {
+    expect(headerSafe("ｓｋ−abc")).toBe("abc");
+    expect(headerSafe("招待コード123")).toBe("123");
+  });
+
+  it("印字可能 ASCII はそのまま通す", () => {
+    expect(headerSafe("sk-proj_ABC-123.xyz~")).toBe("sk-proj_ABC-123.xyz~");
+  });
+
+  it("すべて不正文字なら空文字（ヘッダー自体を送らない判定に使う）", () => {
+    expect(headerSafe("　全角スペースのみ　")).toBe("");
   });
 });
