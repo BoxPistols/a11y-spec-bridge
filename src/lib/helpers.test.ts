@@ -233,6 +233,43 @@ describe("mdToPlain", () => {
   });
 });
 
+// ── parseGrounding ──
+import { parseGrounding } from "./helpers";
+
+describe("parseGrounding", () => {
+  it("先頭センチネル [[GENERAL]] を検出し grounded=false + 除去する", () => {
+    const r = parseGrounding("[[GENERAL]]\n✅ axe DevTools は拡張機能です。");
+    expect(r.grounded).toBe(false);
+    expect(r.answer).toBe("✅ axe DevTools は拡張機能です。");
+  });
+
+  it("センチネルが無ければ grounded=true で本文そのまま", () => {
+    const r = parseGrounding("✅ WCAG 2.2 SC 1.4.3 に基づきます。");
+    expect(r.grounded).toBe(true);
+    expect(r.answer).toBe("✅ WCAG 2.2 SC 1.4.3 に基づきます。");
+  });
+
+  it("センチネル前後の空白・改行揺れを吸収する", () => {
+    expect(parseGrounding("  [[GENERAL]]  \n本文").grounded).toBe(false);
+    expect(parseGrounding("[[general]]\n本文").grounded).toBe(false); // 大小文字許容
+    expect(parseGrounding("[[GENERAL]] 本文").answer).toBe("本文");
+  });
+
+  it("結論行を先に置くモデルでも、位置を問わずセンチネルを除去し grounded=false にする", () => {
+    // concise モードで verdict 行が先、[[GENERAL]] が後に来ても漏らさない
+    const r = parseGrounding("✅ axe は拡張機能です。\n[[GENERAL]]");
+    expect(r.grounded).toBe(false);
+    expect(r.answer).not.toContain("[[GENERAL]]");
+    expect(r.answer.startsWith("✅")).toBe(true);
+  });
+
+  it("センチネルを全除去し、生の文字列を本文へ漏らさない", () => {
+    const r = parseGrounding("[[GENERAL]]\n本文に [[GENERAL]] が二重に出ても除去");
+    expect(r.answer).not.toContain("[[GENERAL]]");
+    expect(r.grounded).toBe(false);
+  });
+});
+
 // ── headerSafe ──
 import { headerSafe } from "./helpers";
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { search, type Source } from "@/lib/rag";
 import { generate, type ModelId, type UserRole, type AnswerMode } from "@/lib/llm";
 import { checkRateLimit } from "@/lib/ratelimit";
+import { parseGrounding } from "@/lib/helpers";
 
 export const runtime = "nodejs";
 
@@ -41,21 +42,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 仕様に該当が無くても門前払いしない。検索結果が空でも generate に渡し、
+    // LLM が一般知識で回答する（回答先頭の [[GENERAL]] センチネルで grounded を判定）
     const results = await search(question, k, filterSource);
-
-    if (results.length === 0) {
-      return NextResponse.json({
-        answer: "関連する仕様ドキュメントが見つかりませんでした。別のキーワードで試してください。",
-        sources: [],
-        model,
-      });
-    }
 
     const llmRes = await generate(model, role, results, question, history, userApiKey, answerMode);
 
+    // 一般知識回答なら先頭センチネルを剥がして grounded=false
+    const parsed = parseGrounding(llmRes.answer);
+    // サーバ側の裏付け: コンテキストが1件も無ければ「仕様ベース」はあり得ない
+    // （LLM がセンチネルを付け忘れても grounded=true にしない）
+    const grounded = parsed.grounded && results.length > 0;
+    const answer = parsed.answer;
+
     return NextResponse.json({
-      answer: llmRes.answer,
-      sources: results,
+      answer,
+      // 仕様外の一般知識回答では、無関係な低スコア結果を根拠として見せない
+      sources: grounded ? results : [],
+      grounded,
       model: llmRes.model,
       tokens: { input: llmRes.inputTokens, output: llmRes.outputTokens },
     });

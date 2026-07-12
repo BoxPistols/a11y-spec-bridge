@@ -21,6 +21,7 @@ export type Message = {
   userRole?: UserRole;
   sources?: Source[];
   tokens?: { input?: number; output?: number };
+  grounded?: boolean; // false = 仕様外・AIの一般知識に基づく回答
   error?: boolean;
 };
 

@@ -291,6 +291,7 @@ export default function Page() {
         userRole: role,
         sources: data.sources,
         tokens: data.tokens,
+        grounded: data.grounded,
       }]);
     } catch (e: unknown) {
       let msg = e instanceof Error ? e.message : String(e);
@@ -1411,6 +1412,14 @@ function MessageBubble({ msg, onExpand }: { msg: Message; onExpand?: () => void 
             {msg.tokens && (
               <span className={styles.aiTokens}>
                 {msg.tokens.input}↑ {msg.tokens.output}↓ tokens
+              </span>
+            )}
+            {msg.grounded === false && !msg.error && (
+              <span
+                className={styles.generalBadge}
+                title="この回答は仕様書（WCAG/WAI-ARIA/MDN）に直接の根拠がなく、AI の一般知識に基づきます。WCAG 番号や具体値は必ず一次情報で確認してください。"
+              >
+                AIの一般知識（仕様外）
               </span>
             )}
             <AriaCheckBadge content={msg.content} />
