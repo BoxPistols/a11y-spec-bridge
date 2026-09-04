@@ -35,9 +35,10 @@ import type { ModelId, UserRole, AnswerMode, SourceTag, Source, Message, ChatSes
 type ModelTier = "free" | "byok"; // byok = bring your own key
 const MODELS: { id: ModelId; label: string; provider: "openai" | "google"; tier: ModelTier }[] = [
   // gpt-5.4系（nano / mini）は提供終了し gpt-5.6-luna に統合された。
-  // byok 枠だった mini が消えたため、OpenAI は無料枠の luna 1本になる
+  // byok 枠は Gemini Pro が担う（Pro は Gemini の無料枠対象外のため自前キーが要る）
   { id: "gpt-5.6-luna",     label: "GPT-5.6 Luna",    provider: "openai", tier: "free" },
-  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google", tier: "free" },
+  { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", provider: "google", tier: "free" },
+  { id: "gemini-2.5-pro",   label: "Gemini 2.5 Pro",  provider: "google", tier: "byok" },
 ];
 
 
@@ -70,7 +71,7 @@ function loadPrefs(): { role: UserRole; model: ModelId; mode: AnswerMode } {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}");
     return {
       role: (["designer", "engineer"] as UserRole[]).includes(p.role) ? p.role : "designer",
-      model: MODELS.some(m => m.id === p.model) ? p.model : "gemini-2.5-flash",
+      model: MODELS.some(m => m.id === p.model) ? p.model : "gpt-5.6-luna",
       mode: p.mode === "detailed" ? "detailed" : "concise",
     };
   } catch { return { role: "designer", model: "gpt-5.6-luna", mode: "concise" }; }
@@ -455,7 +456,7 @@ export default function Page() {
             })}
           </div>
           <div className={styles.apiKeySection}>
-            <div className={styles.apiKeyLabel}>OpenAI API Key（任意）</div>
+            <div className={styles.apiKeyLabel}>API Key（任意・OpenAI / Gemini）</div>
             <input
               className={styles.apiKeyInput}
               type="password"
@@ -467,7 +468,7 @@ export default function Page() {
                 localStorage.setItem("specbridge-user-apikey", v);
               }}
             />
-            <div className={styles.apiKeyHint}>入力するとレート制限なしで利用できます。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
+            <div className={styles.apiKeyHint}>入力するとレート制限なしで利用でき、Gemini 2.5 Pro も選べます。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
           </div>
 
           {/* 招待コード */}
@@ -767,8 +768,9 @@ export default function Page() {
               <section>
                 <h3>モデルについて</h3>
                 <ul>
-                  <li><strong>GPT-5.6 Luna</strong>（デフォルト・無料） — 高速で軽量。ご自身の OpenAI API キーを入力するとレート制限なしで使えます</li>
-                  <li><strong>Gemini 2.5 Flash</strong>（無料） — Google の高速モデル</li>
+                  <li><strong>GPT-5.6 Luna</strong>（デフォルト・無料） — 高速で軽量</li>
+                  <li><strong>Gemini 3.8 Flash</strong>（無料） — Google の高速モデル</li>
+                  <li><strong>Gemini 2.5 Pro</strong>（API Key 必要） — より高精度。ご自身の Gemini API キーを入力すると有効化</li>
                 </ul>
               </section>
               <section>
