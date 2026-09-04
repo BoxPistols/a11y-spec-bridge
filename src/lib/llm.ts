@@ -7,7 +7,7 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { SearchResult } from "./rag";
 
-export type ModelId = "gpt-5.4-nano" | "gpt-5.4-mini" | "gemini-2.5-flash";
+export type ModelId = "gpt-5.6-luna" | "gemini-2.5-flash";
 export type UserRole = "designer" | "engineer";
 export type AnswerMode = "concise" | "detailed";
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -182,7 +182,7 @@ function buildContext(results: SearchResult[]): string {
 
 // ── OpenAI ────────────────────────────────────────────
 async function callOpenAI(
-  model: "gpt-5.4-nano" | "gpt-5.4-mini",
+  model: "gpt-5.6-luna",
   role: UserRole,
   mode: AnswerMode,
   context: string,
@@ -190,10 +190,8 @@ async function callOpenAI(
   history?: ChatMessage[],
   userApiKey?: string
 ): Promise<LLMResponse> {
-  // mini はユーザーの API キー必須、nano はサーバーキー
-  const apiKey = model === "gpt-5.4-mini"
-    ? userApiKey
-    : process.env.OPENAI_API_KEY;
+  // ユーザーが自分のキーを入れていればそれを使い、無ければサーバーキー
+  const apiKey = userApiKey ?? process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("API キーが設定されていません");
   const client = new OpenAI({ apiKey });
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -267,8 +265,7 @@ export async function generate(
 ): Promise<LLMResponse> {
   const context = buildContext(results);
   switch (modelId) {
-    case "gpt-5.4-nano":
-    case "gpt-5.4-mini":
+    case "gpt-5.6-luna":
       return callOpenAI(modelId, role, mode, context, question, history, userApiKey);
     case "gemini-2.5-flash":
       return callGemini(role, mode, context, question, history);

@@ -34,9 +34,10 @@ import type { ModelId, UserRole, AnswerMode, SourceTag, Source, Message, ChatSes
 // ── 定数 ─────────────────────────────────────────────
 type ModelTier = "free" | "byok"; // byok = bring your own key
 const MODELS: { id: ModelId; label: string; provider: "openai" | "google"; tier: ModelTier }[] = [
-  { id: "gpt-5.4-nano",     label: "GPT-5.4 nano",    provider: "openai", tier: "free" },
+  // gpt-5.4系（nano / mini）は提供終了し gpt-5.6-luna に統合された。
+  // byok 枠だった mini が消えたため、OpenAI は無料枠の luna 1本になる
+  { id: "gpt-5.6-luna",     label: "GPT-5.6 Luna",    provider: "openai", tier: "free" },
   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google", tier: "free" },
-  { id: "gpt-5.4-mini",     label: "GPT-5.4 mini",    provider: "openai", tier: "byok" },
 ];
 
 
@@ -64,7 +65,7 @@ function saveSessions(sessions: ChatSession[]) {
 }
 
 function loadPrefs(): { role: UserRole; model: ModelId; mode: AnswerMode } {
-  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.4-nano", mode: "concise" };
+  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.6-luna", mode: "concise" };
   try {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}");
     return {
@@ -72,7 +73,7 @@ function loadPrefs(): { role: UserRole; model: ModelId; mode: AnswerMode } {
       model: MODELS.some(m => m.id === p.model) ? p.model : "gemini-2.5-flash",
       mode: p.mode === "detailed" ? "detailed" : "concise",
     };
-  } catch { return { role: "designer", model: "gpt-5.4-nano", mode: "concise" }; }
+  } catch { return { role: "designer", model: "gpt-5.6-luna", mode: "concise" }; }
 }
 
 function savePrefs(role: UserRole, model: ModelId, mode: AnswerMode) {
@@ -82,7 +83,7 @@ function savePrefs(role: UserRole, model: ModelId, mode: AnswerMode) {
 // ── コンポーネント ────────────────────────────────────
 export default function Page() {
   const [role,       setRole]       = useState<UserRole>("designer");
-  const [model,      setModel]      = useState<ModelId>("gpt-5.4-nano");
+  const [model,      setModel]      = useState<ModelId>("gpt-5.6-luna");
   const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [messages,   setMessages]   = useState<Message[]>([]);
   const [input,      setInput]      = useState("");
@@ -464,10 +465,9 @@ export default function Page() {
                 const v = e.target.value;
                 setUserApiKey(v);
                 localStorage.setItem("specbridge-user-apikey", v);
-                if (!v && model === "gpt-5.4-mini") setModel("gpt-5.4-nano");
               }}
             />
-            <div className={styles.apiKeyHint}>入力すると GPT-5.4 mini が有効になります。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
+            <div className={styles.apiKeyHint}>入力するとレート制限なしで利用できます。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
           </div>
 
           {/* 招待コード */}
@@ -767,9 +767,8 @@ export default function Page() {
               <section>
                 <h3>モデルについて</h3>
                 <ul>
-                  <li><strong>GPT-5.4 nano</strong>（デフォルト・無料） — 高速で軽量</li>
+                  <li><strong>GPT-5.6 Luna</strong>（デフォルト・無料） — 高速で軽量。ご自身の OpenAI API キーを入力するとレート制限なしで使えます</li>
                   <li><strong>Gemini 2.5 Flash</strong>（無料） — Google の高速モデル</li>
-                  <li><strong>GPT-5.4 mini</strong>（API Key 必要） — より高精度。ご自身の OpenAI API キーを入力すると有効化</li>
                 </ul>
               </section>
               <section>

@@ -26,10 +26,6 @@ export async function POST(req: NextRequest) {
     if (!question) return NextResponse.json({ error: "question required" }, { status: 400 });
     if (!model)    return NextResponse.json({ error: "model required" },    { status: 400 });
 
-    if (model === "gpt-5.4-mini" && !userApiKey) {
-      return NextResponse.json({ error: "GPT-5.4 mini にはご自身の OpenAI API キーが必要です" }, { status: 400 });
-    }
-
     // レート制限（自分のAPIキーがあればスキップ）
     if (!userApiKey) {
       const inviteCode = req.headers.get("x-invite-code");
