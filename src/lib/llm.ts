@@ -207,9 +207,10 @@ async function callOpenAI(
     role: "user",
     content: `コンテキスト:\n${context}\n\n質問: ${question}`,
   });
+  // gpt-5.6-luna 系は temperature を受け付けない（default の 1 のみ）。
+  // 明示指定すると 400 Unsupported value になるためパラメータごと送らない
   const res = await client.chat.completions.create({
     model,
-    temperature: 0,
     messages,
   });
   return {
@@ -218,6 +219,31 @@ async function callOpenAI(
     inputTokens: res.usage?.prompt_tokens,
     outputTokens: res.usage?.completion_tokens,
   };
+}
+
+// ── 一時エラーのリトライ ──────────────────────────────
+// Gemini 無料枠は混雑時に 503（過負荷）/ 429（レート）を返す。
+// 恒久的な失敗（400 / 401 / 404）は即座に投げ、一時エラーだけ指数バックオフで再試行する
+const RETRIABLE_STATUS = [429, 503];
+const RETRY_DELAYS_MS = [1000, 2000];
+
+function isRetriable(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return RETRIABLE_STATUS.some(code => msg.includes(`[${code} `));
+}
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastError = e;
+      if (!isRetriable(e) || attempt === RETRY_DELAYS_MS.length) throw e;
+      await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+  throw lastError;
 }
 
 // ── Gemini ────────────────────────────────────────────
@@ -245,8 +271,8 @@ async function callGemini(
         }))
       : [],
   });
-  const result = await chat.sendMessage(
-    `コンテキスト:\n${context}\n\n質問: ${question}`
+  const result = await withRetry(() =>
+    chat.sendMessage(`コンテキスト:\n${context}\n\n質問: ${question}`)
   );
   return {
     answer: result.response.text(),
