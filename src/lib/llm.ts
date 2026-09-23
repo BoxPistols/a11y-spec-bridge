@@ -262,17 +262,18 @@ async function callGemini(
     model,
     systemInstruction: buildSystem(role, mode),
   });
-  // 会話履歴付きチャット
-  const chat = m.startChat({
-    history: (history && history.length > 1)
-      ? history.slice(0, -1).map(msg => ({
-          role: msg.role === "assistant" ? "model" as const : "user" as const,
-          parts: [{ text: msg.content }],
-        }))
-      : [],
-  });
+  const chatHistory = (history && history.length > 1)
+    ? history.slice(0, -1).map(msg => ({
+        role: msg.role === "assistant" ? "model" as const : "user" as const,
+        parts: [{ text: msg.content }],
+      }))
+    : [];
+  // ChatSession は sendMessage 失敗時に内部の送信 Promise が reject のまま残り、
+  // 同じインスタンスへの再送は HTTP を叩かず即座に同じエラーを投げる。
+  // そのためリトライのたびに startChat からやり直す
   const result = await withRetry(() =>
-    chat.sendMessage(`コンテキスト:\n${context}\n\n質問: ${question}`)
+    m.startChat({ history: chatHistory })
+      .sendMessage(`コンテキスト:\n${context}\n\n質問: ${question}`)
   );
   return {
     answer: result.response.text(),

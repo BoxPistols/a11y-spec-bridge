@@ -17,7 +17,8 @@ function toUserError(e: unknown): { message: string; status: number } {
   if (/\b429\b|rate limit|quota/i.test(raw)) {
     return { message: "AI サービスの利用上限に達しました。時間をおくか、ご自身の API キーを設定してください。", status: 429 };
   }
-  if (/\b401\b|invalid api key|API キーが設定されていません/i.test(raw)) {
+  // Gemini は無効キーを 400 + "API key not valid" で返すため文言でも拾う
+  if (/\b401\b|invalid api key|api key not valid|API キーが設定されていません/i.test(raw)) {
     return { message: "API キーが無効、または未設定です。設定画面をご確認ください。", status: 401 };
   }
   return { message: raw, status: 500 };
