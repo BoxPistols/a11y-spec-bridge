@@ -119,7 +119,7 @@ const messages = [
   },
   {
     num: "07", title: "LLM 生成 & レスポンス", desc: "コンテキストを根拠に回答生成 → 出典情報付きで返す",
-    color: "var(--aria)", body: "GPT-6 Lunaがコンテキストを読んで回答を生成。API は answer（回答文）と sources（出典の仕様名・セクション・URL）を返します。コンテキストに情報がなければ「該当情報がありません」と回答します。",
+    color: "var(--aria)", body: "GPT-6 LunaまたはGemini 3.5 Flash-Liteがコンテキストを読んで回答を生成。API は answer（回答文）と sources（出典の仕様名・セクション・URL）を返します。コンテキストに情報がなければ「該当情報がありません」と回答します。",
     code: { label: "レスポンス形式", content: `{
   "answer": "WCAG 2.2 達成基準 1.4.3 によると...",
   "sources": [
@@ -432,7 +432,7 @@ export default function LearnPage() {
         </Link>
         <div className={styles.badge}>RAG — Retrieval-Augmented Generation</div>
         <h1 className={styles.title}>SpecBridge のしくみ</h1>
-        <p className={styles.subtitle}>Upstash Vector + OpenAI Embeddings + GPTのRAGパイプライン解説</p>
+        <p className={styles.subtitle}>Upstash Vector + OpenAI Embeddings + GPT / GeminiのRAGパイプライン解説</p>
       </header>
 
       {/* タブ */}

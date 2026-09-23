@@ -1,4 +1,4 @@
-export type ModelId  = "gpt-6-luna";
+export type ModelId  = "gpt-6-luna" | "gemini-3.5-flash-lite";
 export type UserRole = "designer" | "engineer";
 export type AnswerMode = "concise" | "detailed";
 export type SourceTag = "MDN" | "WCAG" | "WAI-ARIA" | "CUSTOM" | "CURATED";
