@@ -7,7 +7,7 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { SearchResult } from "./rag";
 
-export type ModelId = "gpt-6" | "gemini-3.8-flash" | "gemini-2.5-pro";
+export type ModelId = "gpt-6-luna" | "gemini-3.8-flash" | "gemini-2.5-pro";
 export type UserRole = "designer" | "engineer";
 export type AnswerMode = "concise" | "detailed";
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -182,7 +182,7 @@ function buildContext(results: SearchResult[]): string {
 
 // ── OpenAI ────────────────────────────────────────────
 async function callOpenAI(
-  model: "gpt-6",
+  model: "gpt-6-luna",
   role: UserRole,
   mode: AnswerMode,
   context: string,
@@ -207,7 +207,7 @@ async function callOpenAI(
     role: "user",
     content: `コンテキスト:\n${context}\n\n質問: ${question}`,
   });
-  // gpt-6 系は temperature を受け付けない（default の 1 のみ）。
+  // gpt-6-luna 系は temperature を受け付けない（default の 1 のみ）。
   // 明示指定すると 400 Unsupported value になるためパラメータごと送らない
   const res = await client.chat.completions.create({
     model,
@@ -295,7 +295,7 @@ export async function generate(
 ): Promise<LLMResponse> {
   const context = buildContext(results);
   switch (modelId) {
-    case "gpt-6":
+    case "gpt-6-luna":
       return callOpenAI(modelId, role, mode, context, question, history, userApiKey);
     case "gemini-3.8-flash":
     case "gemini-2.5-pro":
