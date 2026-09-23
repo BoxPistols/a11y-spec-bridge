@@ -6,6 +6,24 @@ import { parseGrounding } from "@/lib/helpers";
 
 export const runtime = "nodejs";
 
+// ── プロバイダのエラーをユーザー向けに正規化 ──────────
+// SDK の生エラー（"[503 Service Unavailable] This model is currently..."）をそのまま
+// 返すと何をすればいいか分からないため、HTTP ステータスと日本語メッセージに変換する
+function toUserError(e: unknown): { message: string; status: number } {
+  const raw = e instanceof Error ? e.message : String(e);
+  if (/\b(503|overloaded|high demand|Service Unavailable)\b/i.test(raw)) {
+    return { message: "AI サービスが混雑しています。少し待つか、別のモデルをお試しください。", status: 503 };
+  }
+  if (/\b429\b|rate limit|quota/i.test(raw)) {
+    return { message: "AI サービスの利用上限に達しました。時間をおくか、ご自身の API キーを設定してください。", status: 429 };
+  }
+  // Gemini は無効キーを 400 + "API key not valid" で返すため文言でも拾う
+  if (/\b401\b|invalid api key|api key not valid|API キーが設定されていません/i.test(raw)) {
+    return { message: "API キーが無効、または未設定です。設定画面をご確認ください。", status: 401 };
+  }
+  return { message: raw, status: 500 };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { question, model, role = "designer", mode, k = 6, filterSource, history } = await req.json() as {
@@ -65,7 +83,7 @@ export async function POST(req: NextRequest) {
       tokens: { input: llmRes.inputTokens, output: llmRes.outputTokens },
     });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const { message, status } = toUserError(e);
+    return NextResponse.json({ error: message }, { status });
   }
 }

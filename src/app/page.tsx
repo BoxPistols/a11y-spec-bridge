@@ -34,11 +34,12 @@ import type { ModelId, UserRole, AnswerMode, SourceTag, Source, Message, ChatSes
 // ── 定数 ─────────────────────────────────────────────
 type ModelTier = "free" | "byok"; // byok = bring your own key
 const MODELS: { id: ModelId; label: string; provider: "openai" | "google"; tier: ModelTier }[] = [
-  // gpt-5.4系（nano / mini）は提供終了し gpt-5.6-luna に統合された。
+  // OpenAI 枠は gpt-5.4系（nano / mini）→ gpt-5.6-luna → gpt-6-luna と更新されてきた。
+  // 旧 id が localStorage に残っていても下の MODELS.some() チェックで既定値に戻る
   // byok 枠は Gemini Pro が担う（Pro は Gemini の無料枠対象外のため自前キーが要る）
-  { id: "gpt-5.6-luna",     label: "GPT-5.6 Luna",    provider: "openai", tier: "free" },
+  { id: "gpt-6-luna",       label: "GPT-6 Luna",       provider: "openai", tier: "free" },
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", provider: "google", tier: "free" },
-  { id: "gemini-2.5-pro",   label: "Gemini 2.5 Pro",  provider: "google", tier: "byok" },
+  { id: "gemini-2.5-pro",   label: "Gemini 2.5 Pro",   provider: "google", tier: "byok" },
 ];
 
 
@@ -66,15 +67,15 @@ function saveSessions(sessions: ChatSession[]) {
 }
 
 function loadPrefs(): { role: UserRole; model: ModelId; mode: AnswerMode } {
-  if (typeof window === "undefined") return { role: "designer", model: "gpt-5.6-luna", mode: "concise" };
+  if (typeof window === "undefined") return { role: "designer", model: "gpt-6-luna", mode: "concise" };
   try {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}");
     return {
       role: (["designer", "engineer"] as UserRole[]).includes(p.role) ? p.role : "designer",
-      model: MODELS.some(m => m.id === p.model) ? p.model : "gpt-5.6-luna",
+      model: MODELS.some(m => m.id === p.model) ? p.model : "gpt-6-luna",
       mode: p.mode === "detailed" ? "detailed" : "concise",
     };
-  } catch { return { role: "designer", model: "gpt-5.6-luna", mode: "concise" }; }
+  } catch { return { role: "designer", model: "gpt-6-luna", mode: "concise" }; }
 }
 
 function savePrefs(role: UserRole, model: ModelId, mode: AnswerMode) {
@@ -84,7 +85,7 @@ function savePrefs(role: UserRole, model: ModelId, mode: AnswerMode) {
 // ── コンポーネント ────────────────────────────────────
 export default function Page() {
   const [role,       setRole]       = useState<UserRole>("designer");
-  const [model,      setModel]      = useState<ModelId>("gpt-5.6-luna");
+  const [model,      setModel]      = useState<ModelId>("gpt-6-luna");
   const [answerMode, setAnswerMode] = useState<AnswerMode>("concise");
   const [messages,   setMessages]   = useState<Message[]>([]);
   const [input,      setInput]      = useState("");
@@ -768,7 +769,7 @@ export default function Page() {
               <section>
                 <h3>モデルについて</h3>
                 <ul>
-                  <li><strong>GPT-5.6 Luna</strong>（デフォルト・無料） — 高速で軽量</li>
+                  <li><strong>GPT-6 Luna</strong>（デフォルト・無料） — 高速で軽量</li>
                   <li><strong>Gemini 3.8 Flash</strong>（無料） — Google の高速モデル</li>
                   <li><strong>Gemini 2.5 Pro</strong>（API Key 必要） — より高精度。ご自身の Gemini API キーを入力すると有効化</li>
                 </ul>

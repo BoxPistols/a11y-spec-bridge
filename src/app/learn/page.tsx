@@ -119,7 +119,7 @@ const messages = [
   },
   {
     num: "07", title: "LLM 生成 & レスポンス", desc: "コンテキストを根拠に回答生成 → 出典情報付きで返す",
-    color: "var(--aria)", body: "GPT-5.6 Luna または Gemini 3.8 Flash / 2.5 Pro がコンテキストを読んで回答を生成。API は answer（回答文）と sources（出典の仕様名・セクション・URL）を返します。コンテキストに情報がなければ「該当情報がありません」と回答します。",
+    color: "var(--aria)", body: "GPT-6 Luna または Gemini 3.8 Flash / 2.5 Pro がコンテキストを読んで回答を生成。API は answer（回答文）と sources（出典の仕様名・セクション・URL）を返します。コンテキストに情報がなければ「該当情報がありません」と回答します。",
     code: { label: "レスポンス形式", content: `{
   "answer": "WCAG 2.2 達成基準 1.4.3 によると...",
   "sources": [
@@ -139,7 +139,7 @@ const SIM_STEPS = [
   { id: "embed", label: "質問をEmbedding (OpenAI API)", icon: "Aa", runLabel: "処理中...", doneLabel: "完了 (〜120ms)", delay: 600 },
   { id: "search", label: "Upstash ベクトル検索 (Top-6)", icon: "🔍", runLabel: "検索中...", doneLabel: "6件取得 (〜15ms)", delay: 400 },
   { id: "prompt", label: "プロンプト組み立て (ロール別)", icon: "📝", runLabel: "組み立て中...", doneLabel: "完了 (〜1ms)", delay: 300 },
-  { id: "llm", label: "GPT-5.6 Luna 生成", icon: "AI", runLabel: "生成中...", doneLabel: "完了 (〜800ms)", delay: 1400 },
+  { id: "llm", label: "GPT-6 Luna 生成", icon: "AI", runLabel: "生成中...", doneLabel: "完了 (〜800ms)", delay: 1400 },
   { id: "parse", label: "回答パース → レスポンス", icon: "✓", runLabel: "パース中...", doneLabel: "完了", delay: 200 },
 ];
 

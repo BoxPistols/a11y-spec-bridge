@@ -7,7 +7,7 @@ function makeMsgUser(content: string): Message {
   return { id: "m1", role: "user", content, userRole: "designer" };
 }
 function makeMsgAssistant(content: string): Message {
-  return { id: "m2", role: "assistant", content, model: "gpt-5.6-luna" };
+  return { id: "m2", role: "assistant", content, model: "gpt-6-luna" };
 }
 function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
   return {

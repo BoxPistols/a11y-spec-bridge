@@ -7,7 +7,7 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { SearchResult } from "./rag";
 
-export type ModelId = "gpt-5.6-luna" | "gemini-3.8-flash" | "gemini-2.5-pro";
+export type ModelId = "gpt-6-luna" | "gemini-3.8-flash" | "gemini-2.5-pro";
 export type UserRole = "designer" | "engineer";
 export type AnswerMode = "concise" | "detailed";
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -182,7 +182,7 @@ function buildContext(results: SearchResult[]): string {
 
 // ── OpenAI ────────────────────────────────────────────
 async function callOpenAI(
-  model: "gpt-5.6-luna",
+  model: "gpt-6-luna",
   role: UserRole,
   mode: AnswerMode,
   context: string,
@@ -207,9 +207,10 @@ async function callOpenAI(
     role: "user",
     content: `コンテキスト:\n${context}\n\n質問: ${question}`,
   });
+  // gpt-6-luna 系は temperature を受け付けない（default の 1 のみ）。
+  // 明示指定すると 400 Unsupported value になるためパラメータごと送らない
   const res = await client.chat.completions.create({
     model,
-    temperature: 0,
     messages,
   });
   return {
@@ -218,6 +219,31 @@ async function callOpenAI(
     inputTokens: res.usage?.prompt_tokens,
     outputTokens: res.usage?.completion_tokens,
   };
+}
+
+// ── 一時エラーのリトライ ──────────────────────────────
+// Gemini 無料枠は混雑時に 503（過負荷）/ 429（レート）を返す。
+// 恒久的な失敗（400 / 401 / 404）は即座に投げ、一時エラーだけ指数バックオフで再試行する
+const RETRIABLE_STATUS = [429, 503];
+const RETRY_DELAYS_MS = [1000, 2000];
+
+function isRetriable(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return RETRIABLE_STATUS.some(code => msg.includes(`[${code} `));
+}
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastError = e;
+      if (!isRetriable(e) || attempt === RETRY_DELAYS_MS.length) throw e;
+      await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+  throw lastError;
 }
 
 // ── Gemini ────────────────────────────────────────────
@@ -236,17 +262,18 @@ async function callGemini(
     model,
     systemInstruction: buildSystem(role, mode),
   });
-  // 会話履歴付きチャット
-  const chat = m.startChat({
-    history: (history && history.length > 1)
-      ? history.slice(0, -1).map(msg => ({
-          role: msg.role === "assistant" ? "model" as const : "user" as const,
-          parts: [{ text: msg.content }],
-        }))
-      : [],
-  });
-  const result = await chat.sendMessage(
-    `コンテキスト:\n${context}\n\n質問: ${question}`
+  const chatHistory = (history && history.length > 1)
+    ? history.slice(0, -1).map(msg => ({
+        role: msg.role === "assistant" ? "model" as const : "user" as const,
+        parts: [{ text: msg.content }],
+      }))
+    : [];
+  // ChatSession は sendMessage 失敗時に内部の送信 Promise が reject のまま残り、
+  // 同じインスタンスへの再送は HTTP を叩かず即座に同じエラーを投げる。
+  // そのためリトライのたびに startChat からやり直す
+  const result = await withRetry(() =>
+    m.startChat({ history: chatHistory })
+      .sendMessage(`コンテキスト:\n${context}\n\n質問: ${question}`)
   );
   return {
     answer: result.response.text(),
@@ -268,7 +295,7 @@ export async function generate(
 ): Promise<LLMResponse> {
   const context = buildContext(results);
   switch (modelId) {
-    case "gpt-5.6-luna":
+    case "gpt-6-luna":
       return callOpenAI(modelId, role, mode, context, question, history, userApiKey);
     case "gemini-3.8-flash":
     case "gemini-2.5-pro":
