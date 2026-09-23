@@ -296,9 +296,13 @@ describe("headerSafe", () => {
 describe("normalizeModelId", () => {
   it("一覧にあるIDはそのまま返す", () => {
     expect(normalizeModelId("gpt-6-luna")).toBe("gpt-6-luna");
+    expect(normalizeModelId("gemini-3.5-flash-lite")).toBe("gemini-3.5-flash-lite");
   });
-  it("外したGeminiや不正値は既定のgpt-6-lunaに戻す", () => {
-    for (const v of ["gemini-3.8-flash", "gemini-2.5-pro", "gpt-5.6-luna", "", undefined, null, 1]) {
+  it("保存値のgemini-3.8-flashはgemini-3.5-flash-liteに寄せる", () => {
+    expect(normalizeModelId("gemini-3.8-flash")).toBe("gemini-3.5-flash-lite");
+  });
+  it("外したモデルや不正値は既定のgpt-6-lunaに戻す", () => {
+    for (const v of ["gemini-2.5-pro", "gemini-3.6-flash", "gpt-6-sol", "gpt-5.6-luna", "constructor", "", undefined, null, 1]) {
       expect(normalizeModelId(v)).toBe("gpt-6-luna");
     }
   });

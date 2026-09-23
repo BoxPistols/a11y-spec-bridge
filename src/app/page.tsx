@@ -38,8 +38,9 @@ const MODELS: { id: ModelId; label: string; provider: "openai" | "google"; tier:
   // OpenAI 枠は gpt-5.4系（nano / mini）→ gpt-5.6-luna → gpt-6-luna と更新されてきた。
   // 旧 id が localStorage に残っていても下のnormalizeModelIdで既定値に戻る
   // gemini-2.5-proは新規利用者に404を返すため外した。保存値に残っていても同じチェックで既定値に戻る
-  // gemini-3.8-flashも2026-09-23夜から503が続き応答を確認できなかったため外した。保存値は同じチェックで既定値に戻る
-  { id: "gpt-6-luna",       label: "GPT-6 Luna",       provider: "openai", tier: "free" },
+  // gemini-3.8-flashは2026-09-23夜から503が続き応答を確認できなかったため、gemini-3.5-flash-liteに差し替えた。保存値はnormalizeModelIdで後継に寄せる
+  { id: "gpt-6-luna",            label: "GPT-6 Luna",            provider: "openai", tier: "free" },
+  { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", provider: "google", tier: "free" },
 ];
 
 
@@ -457,7 +458,7 @@ export default function Page() {
             })}
           </div>
           <div className={styles.apiKeySection}>
-            <div className={styles.apiKeyLabel}>API Key（任意・OpenAI）</div>
+            <div className={styles.apiKeyLabel}>API Key（任意・OpenAI / Gemini）</div>
             <input
               className={styles.apiKeyInput}
               type="password"
@@ -770,6 +771,7 @@ export default function Page() {
                 <h3>モデルについて</h3>
                 <ul>
                   <li><strong>GPT-6 Luna</strong>（デフォルト・無料） — 高速で軽量</li>
+                  <li><strong>Gemini 3.5 Flash-Lite</strong>（無料） — Googleの軽量モデル</li>
                 </ul>
               </section>
               <section>

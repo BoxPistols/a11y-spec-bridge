@@ -7,7 +7,7 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { SearchResult } from "./rag";
 
-export type ModelId = "gpt-6-luna";
+export type ModelId = "gpt-6-luna" | "gemini-3.5-flash-lite";
 export type UserRole = "designer" | "engineer";
 export type AnswerMode = "concise" | "detailed";
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -247,16 +247,16 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 // ── Gemini ────────────────────────────────────────────
-// gemini-3.8-flashは2026-09-23夜から503が続き応答を確認できなかったため選択肢から外した。呼び出し処理は残す
+// gemini-3.8-flashは2026-09-23夜から503が続き応答を確認できなかったため、この条件で応答を確認したgemini-3.5-flash-liteに差し替えた
 async function callGemini(
-  model: "gemini-3.8-flash",
+  model: "gemini-3.5-flash-lite",
   role: UserRole,
   mode: AnswerMode,
   context: string,
   question: string,
   history?: ChatMessage[],
   userApiKey?: string
-): Promise<Omit<LLMResponse, "model"> & { model: "gemini-3.8-flash" }> {
+): Promise<LLMResponse> {
   // ユーザーのキーが入っていればそれを優先する
   const genAI = new GoogleGenerativeAI(userApiKey ?? process.env.GOOGLE_API_KEY ?? "");
   const m = genAI.getGenerativeModel({
@@ -298,6 +298,8 @@ export async function generate(
   switch (modelId) {
     case "gpt-6-luna":
       return callOpenAI(modelId, role, mode, context, question, history, userApiKey);
+    case "gemini-3.5-flash-lite":
+      return callGemini(modelId, role, mode, context, question, history, userApiKey);
     default:
       throw new Error(`Unknown model: ${modelId}`);
   }

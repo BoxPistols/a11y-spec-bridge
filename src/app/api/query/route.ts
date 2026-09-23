@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     // LLM が一般知識で回答する（回答先頭の [[GENERAL]] センチネルで grounded を判定）
     const results = await search(question, k, filterSource);
 
-    // 一覧外のモデル（外したgemini-3.8-flashなど）は既定のgpt-6-lunaで答える
+    // 一覧外のモデルは、差し替えた旧IDなら後継に、それ以外は既定のgpt-6-lunaに寄せる
     const llmRes = await generate(normalizeModelId(model), role, results, question, history, userApiKey, answerMode);
 
     // 一般知識回答なら先頭センチネルを剥がして grounded=false

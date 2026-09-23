@@ -4,10 +4,14 @@ import type { ChatSession, ModelId } from "./types";
 export const MAX_SESSIONS = 50;
 
 // ── モデルID ──
-// 一覧外の値（外したgemini-3.8-flashなど、保存値や古いタブからの送信）は既定のgpt-6-lunaに戻す
-export const MODEL_IDS: readonly ModelId[] = ["gpt-6-luna"];
+// 保存値や古いタブから届く値を一覧と照合する。差し替えた旧IDは後継に寄せ、それ以外の一覧外は既定のgpt-6-lunaに戻す
+export const MODEL_IDS: readonly ModelId[] = ["gpt-6-luna", "gemini-3.5-flash-lite"];
 export const DEFAULT_MODEL_ID: ModelId = "gpt-6-luna";
+const REPLACED_MODEL_IDS: Readonly<Record<string, ModelId>> = {
+  "gemini-3.8-flash": "gemini-3.5-flash-lite",
+};
 export function normalizeModelId(value: unknown): ModelId {
+  if (typeof value === "string" && Object.hasOwn(REPLACED_MODEL_IDS, value)) return REPLACED_MODEL_IDS[value];
   return MODEL_IDS.find(id => id === value) ?? DEFAULT_MODEL_ID;
 }
 
