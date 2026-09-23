@@ -209,9 +209,12 @@ async function callOpenAI(
   });
   // gpt-6-luna 系は temperature を受け付けない（default の 1 のみ）。
   // 明示指定すると 400 Unsupported value になるためパラメータごと送らない
+  // 既定の推論（medium）では、本番の長さの質問で30秒の上限を超えて504になった。
+  // lowにすると回答の長さはほぼ同じまま、所要時間が半分以下になる（2026-09-24に実測: medium 16〜22秒 / low 7〜8秒）
   const res = await client.chat.completions.create({
     model,
     messages,
+    reasoning_effort: "low",
   });
   return {
     answer: res.choices[0].message.content ?? "",
