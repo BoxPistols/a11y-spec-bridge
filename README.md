@@ -16,7 +16,7 @@ WCAG 2.2 / WAI-ARIA / MDN の仕様に基づいてデザインとエンジニア
 | フロント | Next.js 15 App Router |
 | Embedding | OpenAI text-embedding-3-small |
 | VectorDB | Upstash Vector（永続化） |
-| LLM | gpt-5.6-luna / gemini-3.8-flash / gemini-2.5-pro |
+| LLM | gpt-6 / gemini-3.8-flash / gemini-2.5-pro |
 | デプロイ | Vercel |
 
 ## セットアップ
