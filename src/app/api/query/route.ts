@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { search, type Source } from "@/lib/rag";
 import { generate, type ModelId, type UserRole, type AnswerMode } from "@/lib/llm";
 import { checkRateLimit } from "@/lib/ratelimit";
-import { parseGrounding } from "@/lib/helpers";
+import { parseGrounding, normalizeModelId } from "@/lib/helpers";
 
 export const runtime = "nodejs";
 
@@ -60,7 +60,8 @@ export async function POST(req: NextRequest) {
     // LLM が一般知識で回答する（回答先頭の [[GENERAL]] センチネルで grounded を判定）
     const results = await search(question, k, filterSource);
 
-    const llmRes = await generate(model, role, results, question, history, userApiKey, answerMode);
+    // 一覧外のモデル（外したgemini-3.8-flashなど）は既定のgpt-6-lunaで答える
+    const llmRes = await generate(normalizeModelId(model), role, results, question, history, userApiKey, answerMode);
 
     // 一般知識回答なら先頭センチネルを剥がして grounded=false
     const parsed = parseGrounding(llmRes.answer);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildExportPayload, validateImport, mdToPlain } from "./helpers";
+import { buildExportPayload, validateImport, mdToPlain, normalizeModelId } from "./helpers";
 import type { ChatSession, Message } from "./types";
 
 // ── テスト用データ ──
@@ -289,5 +289,17 @@ describe("headerSafe", () => {
 
   it("すべて不正文字なら空文字（ヘッダー自体を送らない判定に使う）", () => {
     expect(headerSafe("　全角スペースのみ　")).toBe("");
+  });
+});
+
+// ── モデルIDの正規化 ──
+describe("normalizeModelId", () => {
+  it("一覧にあるIDはそのまま返す", () => {
+    expect(normalizeModelId("gpt-6-luna")).toBe("gpt-6-luna");
+  });
+  it("外したGeminiや不正値は既定のgpt-6-lunaに戻す", () => {
+    for (const v of ["gemini-3.8-flash", "gemini-2.5-pro", "gpt-5.6-luna", "", undefined, null, 1]) {
+      expect(normalizeModelId(v)).toBe("gpt-6-luna");
+    }
   });
 });

@@ -1,7 +1,15 @@
-import type { ChatSession } from "./types";
+import type { ChatSession, ModelId } from "./types";
 
 // ── 定数 ──
 export const MAX_SESSIONS = 50;
+
+// ── モデルID ──
+// 一覧外の値（外したgemini-3.8-flashなど、保存値や古いタブからの送信）は既定のgpt-6-lunaに戻す
+export const MODEL_IDS: readonly ModelId[] = ["gpt-6-luna"];
+export const DEFAULT_MODEL_ID: ModelId = "gpt-6-luna";
+export function normalizeModelId(value: unknown): ModelId {
+  return MODEL_IDS.find(id => id === value) ?? DEFAULT_MODEL_ID;
+}
 
 // ── グラウンディング判定 ──
 // LLM は仕様コンテキストに根拠が無く一般知識で答えるとき、回答の先頭行に

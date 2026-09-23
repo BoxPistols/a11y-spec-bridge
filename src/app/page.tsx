@@ -29,16 +29,17 @@ import { validateKeyboardCompleteness } from "../lib/keyboardValidate";
 import { validateCssProps } from "../lib/cssValidate";
 import { EXPORT_META } from "../lib/aiExport";
 import { parseVerdict, VERDICT_LABEL } from "../lib/verdict";
+import { normalizeModelId } from "../lib/helpers";
 import type { ModelId, UserRole, AnswerMode, SourceTag, Source, Message, ChatSession } from "../lib/types";
 
 // ── 定数 ─────────────────────────────────────────────
 type ModelTier = "free" | "byok"; // byok = bring your own key
 const MODELS: { id: ModelId; label: string; provider: "openai" | "google"; tier: ModelTier }[] = [
   // OpenAI 枠は gpt-5.4系（nano / mini）→ gpt-5.6-luna → gpt-6-luna と更新されてきた。
-  // 旧 id が localStorage に残っていても下の MODELS.some() チェックで既定値に戻る
+  // 旧 id が localStorage に残っていても下のnormalizeModelIdで既定値に戻る
   // gemini-2.5-proは新規利用者に404を返すため外した。保存値に残っていても同じチェックで既定値に戻る
+  // gemini-3.8-flashも2026-09-23夜から503が続き応答を確認できなかったため外した。保存値は同じチェックで既定値に戻る
   { id: "gpt-6-luna",       label: "GPT-6 Luna",       provider: "openai", tier: "free" },
-  { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", provider: "google", tier: "free" },
 ];
 
 
@@ -71,7 +72,7 @@ function loadPrefs(): { role: UserRole; model: ModelId; mode: AnswerMode } {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}");
     return {
       role: (["designer", "engineer"] as UserRole[]).includes(p.role) ? p.role : "designer",
-      model: MODELS.some(m => m.id === p.model) ? p.model : "gpt-6-luna",
+      model: normalizeModelId(p.model),
       mode: p.mode === "detailed" ? "detailed" : "concise",
     };
   } catch { return { role: "designer", model: "gpt-6-luna", mode: "concise" }; }
@@ -456,7 +457,7 @@ export default function Page() {
             })}
           </div>
           <div className={styles.apiKeySection}>
-            <div className={styles.apiKeyLabel}>API Key（任意・OpenAI / Gemini）</div>
+            <div className={styles.apiKeyLabel}>API Key（任意・OpenAI）</div>
             <input
               className={styles.apiKeyInput}
               type="password"
@@ -769,7 +770,6 @@ export default function Page() {
                 <h3>モデルについて</h3>
                 <ul>
                   <li><strong>GPT-6 Luna</strong>（デフォルト・無料） — 高速で軽量</li>
-                  <li><strong>Gemini 3.8 Flash</strong>（無料） — Google の高速モデル</li>
                 </ul>
               </section>
               <section>
