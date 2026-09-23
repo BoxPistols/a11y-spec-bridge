@@ -44,11 +44,6 @@ export async function POST(req: NextRequest) {
     if (!question) return NextResponse.json({ error: "question required" }, { status: 400 });
     if (!model)    return NextResponse.json({ error: "model required" },    { status: 400 });
 
-    // Gemini Pro は無料枠の対象外。自前の API キーがないと呼べない
-    if (model === "gemini-2.5-pro" && !userApiKey) {
-      return NextResponse.json({ error: "Gemini 2.5 Pro にはご自身の Gemini API キーが必要です" }, { status: 400 });
-    }
-
     // レート制限（自分のAPIキーがあればスキップ）
     if (!userApiKey) {
       const inviteCode = req.headers.get("x-invite-code");

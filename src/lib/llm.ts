@@ -7,7 +7,7 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { SearchResult } from "./rag";
 
-export type ModelId = "gpt-6-luna" | "gemini-3.8-flash" | "gemini-2.5-pro";
+export type ModelId = "gpt-6-luna" | "gemini-3.8-flash";
 export type UserRole = "designer" | "engineer";
 export type AnswerMode = "concise" | "detailed";
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -248,7 +248,7 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 
 // ── Gemini ────────────────────────────────────────────
 async function callGemini(
-  model: "gemini-3.8-flash" | "gemini-2.5-pro",
+  model: "gemini-3.8-flash",
   role: UserRole,
   mode: AnswerMode,
   context: string,
@@ -256,7 +256,7 @@ async function callGemini(
   history?: ChatMessage[],
   userApiKey?: string
 ): Promise<LLMResponse> {
-  // Pro は無料枠の対象外なので、ユーザーのキーが入っていればそれを優先する
+  // ユーザーのキーが入っていればそれを優先する
   const genAI = new GoogleGenerativeAI(userApiKey ?? process.env.GOOGLE_API_KEY ?? "");
   const m = genAI.getGenerativeModel({
     model,
@@ -298,7 +298,6 @@ export async function generate(
     case "gpt-6-luna":
       return callOpenAI(modelId, role, mode, context, question, history, userApiKey);
     case "gemini-3.8-flash":
-    case "gemini-2.5-pro":
       return callGemini(modelId, role, mode, context, question, history, userApiKey);
     default:
       throw new Error(`Unknown model: ${modelId}`);
