@@ -36,10 +36,9 @@ type ModelTier = "free" | "byok"; // byok = bring your own key
 const MODELS: { id: ModelId; label: string; provider: "openai" | "google"; tier: ModelTier }[] = [
   // OpenAI 枠は gpt-5.4系（nano / mini）→ gpt-5.6-luna → gpt-6-luna と更新されてきた。
   // 旧 id が localStorage に残っていても下の MODELS.some() チェックで既定値に戻る
-  // byok 枠は Gemini Pro が担う（Pro は Gemini の無料枠対象外のため自前キーが要る）
+  // gemini-2.5-proは新規利用者に404を返すため外した。保存値に残っていても同じチェックで既定値に戻る
   { id: "gpt-6-luna",       label: "GPT-6 Luna",       provider: "openai", tier: "free" },
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", provider: "google", tier: "free" },
-  { id: "gemini-2.5-pro",   label: "Gemini 2.5 Pro",   provider: "google", tier: "byok" },
 ];
 
 
@@ -469,7 +468,7 @@ export default function Page() {
                 localStorage.setItem("specbridge-user-apikey", v);
               }}
             />
-            <div className={styles.apiKeyHint}>入力するとレート制限なしで利用でき、Gemini 2.5 Pro も選べます。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
+            <div className={styles.apiKeyHint}>入力するとレート制限なしで利用できます。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
           </div>
 
           {/* 招待コード */}
@@ -771,7 +770,6 @@ export default function Page() {
                 <ul>
                   <li><strong>GPT-6 Luna</strong>（デフォルト・無料） — 高速で軽量</li>
                   <li><strong>Gemini 3.8 Flash</strong>（無料） — Google の高速モデル</li>
-                  <li><strong>Gemini 2.5 Pro</strong>（API Key 必要） — より高精度。ご自身の Gemini API キーを入力すると有効化</li>
                 </ul>
               </section>
               <section>
