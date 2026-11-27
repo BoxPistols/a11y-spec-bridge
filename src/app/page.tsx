@@ -53,6 +53,24 @@ const SOURCE_META: Record<SourceTag, { label: string; color: string; bg: string 
 };
 
 // ── チャット履歴管理 ─────────────────────────────────
+// トップ画面の文言（対象: アクセシビリティの担当者がいない現場の、デザイナーとフロントエンドエンジニア）
+const HOME_TEXT = {
+  eyebrow: "デザイナーとフロントエンドエンジニアのための",
+  // 見出しは句の切れ目でだけ折り返す（「判断」と「を」の間で切れないように）
+  titleLines: ["アクセシビリティの判断を、", "仕様を根拠にすぐ出す"],
+  desc: "担当者がいない現場でも、WCAG 2.2・WAI-ARIA・MDN の仕様をもとに OK / NG と理由を返します。結果は受け入れ基準や Claude Code のルールにして、チームに配れます。",
+  step1Title: "体験する",
+  step1Desc: "画面を真っ暗にして、読み上げだけでピザを注文する。対応前と対応後で、かかる時間を比べる",
+  step1Action: "暗転チャレンジ",
+  step2Title: "判断する",
+  step2Desc: "迷った UI を質問すると、1 行目に OK / NG、続けて仕様の根拠と直し方を返す",
+  step2Action: "質問を選ぶ",
+  step3Title: "チームに配る",
+  step3Desc: "質問したあと、左の欄の「チームに配る」から受け入れ基準・DESIGN.md・Claude Code Skill を作る",
+  askHeading: "よくある質問から選ぶ",
+  howItWorks: "SpecBridge の仕組み（RAG の解説）",
+} as const;
+
 const STORAGE_KEY = "specbridge-sessions";
 const PREFS_KEY = "specbridge-prefs";
 
@@ -100,6 +118,7 @@ export default function Page() {
   const [sessions,   setSessions]   = useState<ChatSession[]>([]);
   const [currentId,  setCurrentId]  = useState<string | null>(null);
   const [theme,      setTheme]      = useState<"light" | "dark">("light");
+  const suggestSearchRef = useRef<HTMLInputElement | null>(null);
   const [suggestQ,     setSuggestQ]     = useState("");
   const [suggestCat,   setSuggestCat]   = useState<string | null>(null);
   const [suggestTheme, setSuggestTheme] = useState<string | null>(null);
@@ -386,7 +405,7 @@ export default function Page() {
           </div>
           <div>
             <div className={styles.brandName}>SpecBridge</div>
-            <div className={styles.brandSub}>Design × Spec Q&A</div>
+            <div className={styles.brandSub}>a11y の判断を仕様から</div>
           </div>
           </button>
           {messages.length > 0 && (
@@ -440,132 +459,9 @@ export default function Page() {
           </div>
         </div>
 
-        {/* モデル選択 */}
-        <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>モデル</div>
-          <div className={styles.modelList}>
-            {MODELS.map(m => {
-              const isByok = m.tier === "byok";
-              const disabled = isByok && !userApiKey;
-              return (
-                <button
-                  key={m.id}
-                  className={`${styles.modelBtn} ${model === m.id ? styles.modelActive : ""} ${disabled ? styles.modelDisabled : ""}`}
-                  onClick={() => !disabled && setModel(m.id)}
-                  disabled={disabled}
-                  title={disabled ? "API キーを入力すると使えます" : `${m.label} を使用`}
-                >
-                  <span className={`${styles.providerPip} ${styles[m.provider]}`} />
-                  {m.label}
-                  {m.tier === "free" && <span className={styles.freeBadge}>Free</span>}
-                  {isByok && <span className={styles.byokBadge}>API Key</span>}
-                </button>
-              );
-            })}
-          </div>
-          <div className={styles.apiKeySection}>
-            <div className={styles.apiKeyLabel}>API Key（任意・OpenAI / Gemini）</div>
-            <input
-              className={styles.apiKeyInput}
-              type="password"
-              placeholder="sk-..."
-              value={userApiKey}
-              onChange={e => {
-                const v = e.target.value;
-                setUserApiKey(v);
-                localStorage.setItem("specbridge-user-apikey", v);
-              }}
-            />
-            <div className={styles.apiKeyHint}>入力するとレート制限なしで利用できます。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
-          </div>
-
-          {/* 招待コード */}
-          <div className={styles.inviteSection}>
-            <div className={styles.apiKeyLabel}>招待コード（任意）</div>
-            <div className={styles.inviteRow}>
-              <input
-                className={styles.apiKeyInput}
-                type="text"
-                placeholder="招待コードを入力..."
-                value={inviteCode}
-                onChange={e => setInviteCode(e.target.value)}
-              />
-              <button
-                className={styles.inviteBtn}
-                disabled={!inviteCode.trim()}
-                onClick={async () => {
-                  const code = inviteCode.trim();
-                  try {
-                    const res = await fetch("/api/verify-invite", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ code }),
-                    });
-                    const { valid } = await res.json();
-                    setInviteValid(valid);
-                    if (valid) {
-                      localStorage.setItem("specbridge-invite-code", code);
-                      fetchQuota(code);
-                    } else {
-                      localStorage.removeItem("specbridge-invite-code");
-                    }
-                  } catch { setInviteValid(false); }
-                }}
-              >
-                確認
-              </button>
-            </div>
-            {inviteValid === true && <div className={styles.inviteOk}>認証済み — 利用上限が拡張されています</div>}
-            {inviteValid === false && <div className={styles.inviteNg}>無効なコードです</div>}
-            <div className={styles.apiKeyHint}>招待コードがなくても利用できます（1日{quota?.limit ?? "..."}回まで）。自分のAPIキーを入力すると無制限です。</div>
-          </div>
-        </div>
-
-        {/* ドキュメントソース */}
-        <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>ナレッジソース <HelpTip text="回答の根拠となる仕様データベースです。MDN（Mozilla）/ WCAG 2.2（W3C）/ WAI-ARIA（W3C）の公式仕様、および 内部精査（SpecBridge 内部で精査した UX レビュー用パターン 28件、第三者ガイド由来ではありません）が事前に埋め込まれています。" /></div>
-          <div className={styles.sourceList}>
-            {(["MDN", "WCAG", "WAI-ARIA", "CURATED"] as SourceTag[]).map(s => (
-              <div key={s} className={styles.sourceRow} style={{ "--c": SOURCE_META[s].color } as React.CSSProperties}>
-                <span className={styles.sourcePip} />
-                <span>{SOURCE_META[s].label}</span>
-                <span className={styles.sourceSeedBadge}>事前埋込済</span>
-              </div>
-            ))}
-            {customDocs.map(d => (
-              <div key={d} className={styles.sourceRow} style={{ "--c": SOURCE_META.CUSTOM.color } as React.CSSProperties}>
-                <span className={styles.sourcePip} />
-                <span className={styles.sourceCustomLabel}>{d}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* カスタム追加 */}
-        <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>独自ガイドを追加 <HelpTip text="自社のデザインガイドやコーディング規約（PDF / TXT / MD、5MBまで）をアップロードすると、回答の根拠に加わります。追加には招待コードが必要です。" /></div>
-          <div
-            className={`${styles.dropZone} ${dragOver ? styles.dropActive : ""}`}
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
-            onClick={() => fileRef.current?.click()}
-          >
-            {uploading
-              ? <><span className={styles.spin} /> 取り込み中...</>
-              : <><span>PDF / TXT / MD</span><span className={styles.dropHint}>ドロップ or クリック</span></>
-            }
-          </div>
-          <input
-            ref={fileRef} type="file" accept=".pdf,.txt,.md"
-            style={{ display: "none" }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) ingestFile(f); }}
-          />
-        </div>
-
         {/* ワークフロー連携エクスポート */}
         <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>ワークフロー連携 <HelpTip text="この会話を、普段の業務にそのまま流し込める形で出力します。ビジネス根拠資料はステークホルダー説明・要件定義に、受け入れ基準はチケットの Done 定義に貼れます。Claude Code の Skill / サブエージェントとして置けば、アクセシビリティを意識しなくても AI コーディング時に自動でレビューが効きます。" /></div>
+          <div className={styles.sideLabel}>チームに配る <HelpTip text="この会話を、普段の業務にそのまま流し込める形で出力します。ビジネス根拠資料はステークホルダー説明・要件定義に、受け入れ基準はチケットの Done 定義に貼れます。Claude Code の Skill / サブエージェントとして置けば、アクセシビリティを意識しなくても AI コーディング時に自動でレビューが効きます。" /></div>
           {messages.length > 0 ? (
             <div className={styles.exportList}>
               {EXPORT_META.map(ex => (
@@ -711,6 +607,133 @@ export default function Page() {
           )}
         </div>
 
+        {/* 設定（モデル・API キー・招待コード・根拠の仕様・独自ガイド）。初めて来た人には不要なので折りたたむ */}
+        <details className={styles.settings}>
+          <summary className={styles.settingsSummary}>設定（モデル・API キーなど）</summary>
+        {/* モデル選択 */}
+        <div className={styles.sideSection}>
+          <div className={styles.sideLabel}>モデル</div>
+          <div className={styles.modelList}>
+            {MODELS.map(m => {
+              const isByok = m.tier === "byok";
+              const disabled = isByok && !userApiKey;
+              return (
+                <button
+                  key={m.id}
+                  className={`${styles.modelBtn} ${model === m.id ? styles.modelActive : ""} ${disabled ? styles.modelDisabled : ""}`}
+                  onClick={() => !disabled && setModel(m.id)}
+                  disabled={disabled}
+                  title={disabled ? "API キーを入力すると使えます" : `${m.label} を使用`}
+                >
+                  <span className={`${styles.providerPip} ${styles[m.provider]}`} />
+                  {m.label}
+                  {m.tier === "free" && <span className={styles.freeBadge}>Free</span>}
+                  {isByok && <span className={styles.byokBadge}>API Key</span>}
+                </button>
+              );
+            })}
+          </div>
+          <div className={styles.apiKeySection}>
+            <div className={styles.apiKeyLabel}>API Key（任意・OpenAI / Gemini）</div>
+            <input
+              className={styles.apiKeyInput}
+              type="password"
+              placeholder="sk-..."
+              value={userApiKey}
+              onChange={e => {
+                const v = e.target.value;
+                setUserApiKey(v);
+                localStorage.setItem("specbridge-user-apikey", v);
+              }}
+            />
+            <div className={styles.apiKeyHint}>入力するとレート制限なしで利用できます。キーはブラウザに保存されます。共用端末ではご注意ください。</div>
+          </div>
+
+          {/* 招待コード */}
+          <div className={styles.inviteSection}>
+            <div className={styles.apiKeyLabel}>招待コード（任意）</div>
+            <div className={styles.inviteRow}>
+              <input
+                className={styles.apiKeyInput}
+                type="text"
+                placeholder="招待コードを入力..."
+                value={inviteCode}
+                onChange={e => setInviteCode(e.target.value)}
+              />
+              <button
+                className={styles.inviteBtn}
+                disabled={!inviteCode.trim()}
+                onClick={async () => {
+                  const code = inviteCode.trim();
+                  try {
+                    const res = await fetch("/api/verify-invite", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ code }),
+                    });
+                    const { valid } = await res.json();
+                    setInviteValid(valid);
+                    if (valid) {
+                      localStorage.setItem("specbridge-invite-code", code);
+                      fetchQuota(code);
+                    } else {
+                      localStorage.removeItem("specbridge-invite-code");
+                    }
+                  } catch { setInviteValid(false); }
+                }}
+              >
+                確認
+              </button>
+            </div>
+            {inviteValid === true && <div className={styles.inviteOk}>認証済み — 利用上限が拡張されています</div>}
+            {inviteValid === false && <div className={styles.inviteNg}>無効なコードです</div>}
+            <div className={styles.apiKeyHint}>招待コードがなくても利用できます（1日{quota?.limit ?? "..."}回まで）。自分のAPIキーを入力すると無制限です。</div>
+          </div>
+        </div>
+
+        {/* ドキュメントソース */}
+        <div className={styles.sideSection}>
+          <div className={styles.sideLabel}>ナレッジソース <HelpTip text="回答の根拠となる仕様データベースです。MDN（Mozilla）/ WCAG 2.2（W3C）/ WAI-ARIA（W3C）の公式仕様、および 内部精査（SpecBridge 内部で精査した UX レビュー用パターン 28件、第三者ガイド由来ではありません）が事前に埋め込まれています。" /></div>
+          <div className={styles.sourceList}>
+            {(["MDN", "WCAG", "WAI-ARIA", "CURATED"] as SourceTag[]).map(s => (
+              <div key={s} className={styles.sourceRow} style={{ "--c": SOURCE_META[s].color } as React.CSSProperties}>
+                <span className={styles.sourcePip} />
+                <span>{SOURCE_META[s].label}</span>
+                <span className={styles.sourceSeedBadge}>事前埋込済</span>
+              </div>
+            ))}
+            {customDocs.map(d => (
+              <div key={d} className={styles.sourceRow} style={{ "--c": SOURCE_META.CUSTOM.color } as React.CSSProperties}>
+                <span className={styles.sourcePip} />
+                <span className={styles.sourceCustomLabel}>{d}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* カスタム追加 */}
+        <div className={styles.sideSection}>
+          <div className={styles.sideLabel}>独自ガイドを追加 <HelpTip text="自社のデザインガイドやコーディング規約（PDF / TXT / MD、5MBまで）をアップロードすると、回答の根拠に加わります。追加には招待コードが必要です。" /></div>
+          <div
+            className={`${styles.dropZone} ${dragOver ? styles.dropActive : ""}`}
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading
+              ? <><span className={styles.spin} /> 取り込み中...</>
+              : <><span>PDF / TXT / MD</span><span className={styles.dropHint}>ドロップ or クリック</span></>
+            }
+          </div>
+          <input
+            ref={fileRef} type="file" accept=".pdf,.txt,.md"
+            style={{ display: "none" }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) ingestFile(f); }}
+          />
+        </div>
+        </details>
+
         {/* フッター */}
         <div className={styles.sideFooter}>
           {vectorCount !== null && (
@@ -824,20 +847,56 @@ export default function Page() {
         <div className={styles.messages}>
           {messages.length === 0 ? (
             <div className={styles.welcome}>
-              <div className={styles.welcomeTitle}>
-                仕様を根拠に、判断できる
-              </div>
-              <div className={styles.welcomeDesc}>
-                WCAG 2.2 / WAI-ARIA / MDN の仕様を検索して、<br />
-                デザインとエンジニアリングの判断を支援します
-              </div>
+              {/* 誰のための道具かを最初に示す（対象: アクセシビリティの担当者がいない現場のデザイナーとエンジニア） */}
+              <div className={styles.welcomeEyebrow}>{HOME_TEXT.eyebrow}</div>
+              <h1 className={styles.welcomeTitle}>
+                {HOME_TEXT.titleLines.map(line => <span key={line} className={styles.nowrapPhrase}>{line}</span>)}
+              </h1>
+              <p className={styles.welcomeDesc}>{HOME_TEXT.desc}</p>
+
+              {/* 体験する → 判断する → チームに配る の 3 段階 */}
+              {/* list-style: none だと Safari の VoiceOver はリストとして読まないため role="list" を明示する。
+                  順番はリストの「3 項目中 1 番目」で伝わるので、見た目の番号は二重に読まれないよう aria-hidden にする */}
+              <ol className={styles.steps} role="list">
+                <li className={styles.step}>
+                  <span className={styles.stepNum} aria-hidden="true">1</span>
+                  <div className={styles.stepBody}>
+                    <div className={styles.stepTitle}>{HOME_TEXT.step1Title}</div>
+                    <div className={styles.stepDesc}>{HOME_TEXT.step1Desc}</div>
+                  </div>
+                  <Link href="/experience" className={styles.stepAction}>
+                    {HOME_TEXT.step1Action} {ICO.arrowRight}
+                  </Link>
+                </li>
+                <li className={styles.step}>
+                  <span className={styles.stepNum} aria-hidden="true">2</span>
+                  <div className={styles.stepBody}>
+                    <div className={styles.stepTitle}>{HOME_TEXT.step2Title}</div>
+                    <div className={styles.stepDesc}>{HOME_TEXT.step2Desc}</div>
+                  </div>
+                  <button type="button" className={styles.stepAction} onClick={() => suggestSearchRef.current?.focus()}>
+                    {HOME_TEXT.step2Action} {ICO.arrowRight}
+                  </button>
+                </li>
+                <li className={styles.step}>
+                  <span className={styles.stepNum} aria-hidden="true">3</span>
+                  <div className={styles.stepBody}>
+                    <div className={styles.stepTitle}>{HOME_TEXT.step3Title}</div>
+                    <div className={styles.stepDesc}>{HOME_TEXT.step3Desc}</div>
+                  </div>
+                </li>
+              </ol>
+
+              <h2 className={styles.welcomeSection}>{HOME_TEXT.askHeading}</h2>
 
               {/* 検索 */}
               <div className={styles.suggestSearch}>
                 <span className={styles.suggestSearchIcon}>{ICO.search}</span>
                 <input
+                  ref={suggestSearchRef}
                   className={styles.suggestSearchInput}
-                  placeholder="質問やキーワードで検索..."
+                  aria-label="よくある質問を検索"
+                  placeholder="質問やキーワードで検索（例: モーダル、フォーカス、色）"
                   value={suggestQ}
                   onChange={e => { setSuggestQ(e.target.value); setSuggestCat(null); setSuggestTheme(null); }}
                 />
@@ -954,25 +1013,10 @@ export default function Page() {
                     </div>
                   </div>
 
-                  <div className={styles.learnBanner}>
-                    <div className={styles.learnBannerText}>
-                      <div className={styles.learnBannerTitle}>{ICO.learn} RAG のしくみを学ぶ</div>
-                      <div className={styles.learnBannerDesc}>SpecBridge がどう動いているか、パイプラインをステップごとに解説</div>
-                    </div>
-                    <Link href="/learn" className={styles.learnBannerLink}>
-                      解説を見る {ICO.arrowRight}
-                    </Link>
-                  </div>
-                  {/* 体験ページへの入口（画面を暗くして読み上げだけで操作する） */}
-                  <div className={styles.learnBanner}>
-                    <div className={styles.learnBannerText}>
-                      <div className={styles.learnBannerTitle}>暗転チャレンジ</div>
-                      <div className={styles.learnBannerDesc}>画面を真っ暗にして、読み上げだけでピザを注文できるか。対応前と対応後で比べる</div>
-                    </div>
-                    <Link href="/experience" className={styles.learnBannerLink}>
-                      挑戦する {ICO.arrowRight}
-                    </Link>
-                  </div>
+                  {/* 仕組みの解説は利用者向けの主導線ではないので、最後に小さく置く */}
+                  <p className={styles.howItWorks}>
+                    <Link href="/learn">{HOME_TEXT.howItWorks} {ICO.arrowRight}</Link>
+                  </p>
                 </>
               )}
             </div>
