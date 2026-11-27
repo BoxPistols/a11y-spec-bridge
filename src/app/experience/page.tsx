@@ -1,74 +1,87 @@
 "use client";
 // 暗転チャレンジ: 画面を真っ暗にして、読み上げだけでピザを注文する。
-// 見た目が同じ「対応前」と「対応後」の画面で挑戦し、かかった時間・操作回数・暗闇の中の動きを比べる
+// 見た目が同じ「よくある画面（対応前）」と「やさしい画面（対応後）」で挑戦し、
+// かかった時間・操作の回数・暗闇の中の道すじ・「きこえたこと」と「ほんとうは」を比べる。
+// 子どもでも遊べるように、言葉はやさしく短くし、説明は絵・数字・色で見せる
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import styles from "./experience.module.css";
 import { OrderAfter, OrderBefore, type PizzaSize } from "./OrderScreens";
 import { READER_TEXT, useReaderSession, type PathPoint } from "./useReaderSession";
+import { heardRows, isUnclear, starsOf, type PlayResult } from "./scoring";
 
 type Version = "before" | "after";
 type Phase = "menu" | "playing" | "result";
 
-type Result = {
-  success: boolean;
-  ms: number;
-  moves: number;
-  path: PathPoint[];
-};
+type Result = PlayResult;
 
 const GOAL_SIZE: PizzaSize = "M";
 const GOAL_QTY = 2;
 const TIME_LIMIT_MS = 120_000;
 const QTY_MIN = 1;
 const QTY_MAX = 9;
+// ピザが届く演出の長さ
+const DELIVERY_MS = 2600;
+const CONFETTI_COUNT = 14;
 
 const TEXT = {
-  title: "暗転チャレンジ",
-  lead: "画面を見ずに、音だけでピザを注文できるか",
+  home: "SpecBridge に戻る",
   goal: "ゴール",
-  goalValue: "Mサイズを 2枚",
-  before: "対応前",
-  after: "対応後",
-  beforeSub: "よくある作り方",
-  afterSub: "アクセシビリティ対応",
-  start: "暗くしてスタート",
-  sameLook: "2つの画面は、見た目がまったく同じです",
-  keys: "操作",
-  keyNext: "次へ",
-  keyPrev: "前へ",
-  keyTab: "次のボタン",
-  keyEnter: "決定",
+  goalValueLines: ["M サイズを", "2まい"],
+  before: "よくある画面",
+  after: "やさしい画面",
+  beforeSub: "ボタンに 名前が ない作り",
+  afterSub: "アクセシビリティ対応ずみ",
+  start: "くらくして スタート",
+  sameLook: "2つの画面は 見た目が おなじ。ちがうのは 中身だけ",
+  keys: "つかうキー",
+  keyNext: "つぎ",
+  keyPrev: "まえ",
+  keyEnter: "えらぶ",
+  keyTab: "ボタンだけ",
   keyRepeat: "もう一度",
   keyQuit: "やめる",
-  ripple: "波紋",
-  caption: "字幕",
-  noSpeech: "このブラウザは読み上げに対応していません。字幕で遊べます。",
-  success: "注文できた",
-  failed: "注文できなかった",
-  seconds: "秒",
+  moreKeys: "ほかのキー",
+  ripple: "ひかり",
+  caption: "じまく",
+  noSpeech: "このブラウザは 読み上げが つかえません。じまくで あそべます。",
+  success: "ちゅうもん できた！",
+  failed: "ちゅうもん できなかった",
+  seconds: "びょう",
   movesUnit: "回",
-  time: "時間",
-  movesLabel: "操作",
-  tryOther: "もう一方で挑戦",
+  time: "じかん",
+  movesLabel: "おした回数",
+  tryOther: "もう一つの画面で あそぶ",
   retry: "もう一度",
-  back: "最初へ",
-  compare: "くらべる",
-  pathCaption: "暗闇の中で動いた道すじ",
-  wrongOrder: "サイズか枚数が違います。Mサイズを2枚にしてください。",
-  noSize: "サイズを選んでください。",
-  orderedVoice: "注文できました",
-  timeUpVoice: "時間切れです",
-  quitVoice: "やめました。明かりをつけます",
-  notReached: "たどり着けず",
-  home: "SpecBridge に戻る",
-  missLegend: "反応なし",
-  controlLegend: "ボタンなど",
-  contentLegend: "文字・画像",
+  back: "さいしょへ",
+  compare: "くらべてみよう",
+  pathCaption: "くらやみで うごいた みち",
+  wrongOrder: "サイズか まい数が ちがいます。M サイズを 2まいに してね。",
+  noSize: "サイズを えらんでね。",
+  orderedVoice: "ちゅうもん できました",
+  timeUpVoice: "じかん ぎれ。あかりを つけるよ",
+  quitVoice: "あかりを つけるよ",
+  notReached: "とどかず",
+  missLegend: "なにも おきない",
+  controlLegend: "ボタン",
+  contentLegend: "文字・絵",
+  heard: "きこえたこと",
+  seen: "ほんとうは",
+  verdictBefore: "わるいのは きみじゃない。画面が おしえて くれなかった",
+  verdictAfterOk: "画面が ちゃんと おしえて くれた",
+  verdictAfterNg: "画面は おしえて くれていた。もう一度 ためそう",
+  unclearCount: (n: number, total: number) => `${total}こ 中 ${n}こ が わからない ことば`,
+  delivered: "おまたせしました！",
+  starsLabel: (n: number) => `ほし ${n}こ`,
 } as const;
 
 const fmtSec = (ms: number) => (ms / 1000).toFixed(1);
+
+// ふりがな
+function Rb({ children, rt }: { children: ReactNode; rt: string }) {
+  return <ruby>{children}<rt>{rt}</rt></ruby>;
+}
 
 export default function ExperiencePage() {
   const [phase, setPhase] = useState<Phase>("menu");
@@ -80,6 +93,7 @@ export default function ExperiencePage() {
   const [showRipple, setShowRipple] = useState(true);
   const [showCaption, setShowCaption] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [delivering, setDelivering] = useState(false);
   const startedAt = useRef(0);
   // 終了処理は 1 回の挑戦につき 1 回だけ（時間切れの判定とキー操作が重なっても結果を上書きしない）
   const finishedRef = useRef(false);
@@ -87,7 +101,7 @@ export default function ExperiencePage() {
   const sinkRef = useRef<HTMLDivElement | null>(null);
 
   const session = useReaderSession(stageRef, phase === "playing");
-  const { speech, ensure, ping, moves, path, ripple, move, activate, repeat, reset } = session;
+  const { speech, ensure, ping, jingle, moves, path, ripple, move, activate, repeat, reset } = session;
 
   const finish = useCallback((success: boolean, reason: "order" | "timeup" | "quit" = success ? "order" : "quit") => {
     if (finishedRef.current) return;
@@ -96,19 +110,28 @@ export default function ExperiencePage() {
     setResults(r => ({ ...r, [version]: { success, ms, moves, path } }));
     setPhase("result");
     if (success) {
-      ping(0.5, 0.5, "success");
+      jingle();
       speech.speak(TEXT.orderedVoice);
+      setDelivering(true);
     } else {
       ping(0.5, 0.5, "error");
       speech.speak(reason === "timeup" ? TEXT.timeUpVoice : TEXT.quitVoice);
     }
-  }, [version, moves, path, ping, speech]);
+  }, [version, moves, path, ping, jingle, speech]);
+
+  // ピザが届く演出は一定時間で消し、道すじが見えるようにする
+  useEffect(() => {
+    if (!delivering) return;
+    const id = window.setTimeout(() => setDelivering(false), DELIVERY_MS);
+    return () => window.clearTimeout(id);
+  }, [delivering]);
 
   const begin = useCallback((v: Version) => {
     setVersion(v);
     setSize(null);
     setQty(QTY_MIN);
     setError("");
+    setDelivering(false);
     reset();
     ensure(); // 利用者の操作の直後に音声の準備をする（ブラウザの自動再生の制限）
     startedAt.current = Date.now();
@@ -169,13 +192,17 @@ export default function ExperiencePage() {
   const current = results[version];
   const other: Version = version === "before" ? "after" : "before";
   const both = results.before && results.after;
+  const versionName = (v: Version) => (v === "before" ? TEXT.before : TEXT.after);
 
   return (
     <div className={styles.page} data-phase={phase}>
       <header className={styles.header}>
         <Link href="/" className={styles.homeLink}>← {TEXT.home}</Link>
-        <h1 className={styles.title}>{TEXT.title}</h1>
-        <p className={styles.lead}>{TEXT.lead}</p>
+        <h1 className={styles.title}><Rb rt="あんてん">暗転</Rb>チャレンジ</h1>
+        <p className={styles.lead}>
+          {/* ふりがなが親字より長いと字間が開くので、長いものはかなで書く */}
+          <Rb rt="がめん">画面</Rb>を 見ないで、<Rb rt="おと">音</Rb>だけで ピザを ちゅうもん できるかな
+        </p>
       </header>
 
       {phase === "menu" && (
@@ -191,19 +218,24 @@ export default function ExperiencePage() {
               <div ref={stageRef} className={styles.stage}>
                 {version === "before" ? <OrderBefore {...screenProps} /> : <OrderAfter {...screenProps} />}
               </div>
-              {phase === "result" && current && <PathOverlay path={current.path} />}
+              {phase === "result" && current && !delivering && <PathOverlay path={current.path} />}
+              {phase === "result" && delivering && <Delivery />}
             </div>
           </div>
 
           {phase === "result" && current && (
             <ResultPanel
-              version={version}
+              versionLabel={versionName(version)}
               result={current}
               onRetry={() => begin(version)}
               onOther={() => begin(other)}
               onMenu={() => setPhase("menu")}
               otherDone={!!results[other]}
             />
+          )}
+
+          {phase === "result" && current && (
+            <HeardVsSeen version={version} result={current} />
           )}
         </div>
       )}
@@ -223,10 +255,10 @@ export default function ExperiencePage() {
               style={{ left: ripple.left + ripple.width / 2, top: ripple.top + ripple.height / 2 }}
             />
           )}
-          <div ref={sinkRef} tabIndex={-1} className={styles.sink} aria-label={TEXT.title} />
+          <div ref={sinkRef} tabIndex={-1} className={styles.sink} aria-label="暗転チャレンジ" />
           <div className={styles.hud}>
             <div className={styles.hudTop}>
-              <span className={styles.hudBadge}>{version === "before" ? TEXT.before : TEXT.after}</span>
+              <span className={styles.hudBadge}>{versionName(version)}</span>
               <span className={styles.hudTime} aria-hidden="true">{fmtSec(elapsed)}{TEXT.seconds}</span>
               <span className={styles.hudMoves} aria-hidden="true">{moves}{TEXT.movesUnit}</span>
               <div className={styles.hudToggles}>
@@ -241,8 +273,8 @@ export default function ExperiencePage() {
               <PadButton label={TEXT.keyPrev} keyCap="↑" onPress={() => move(-1)} />
               <PadButton label={TEXT.keyEnter} keyCap="Enter" onPress={activate} primary />
               <PadButton label={TEXT.keyNext} keyCap="↓" onPress={() => move(1)} />
-              <PadButton label={TEXT.keyRepeat} keyCap="R" onPress={repeat} />
-              <PadButton label={TEXT.keyQuit} keyCap="Esc" onPress={() => finish(false)} />
+              <PadButton label={TEXT.keyRepeat} keyCap="R" onPress={repeat} small />
+              <PadButton label={TEXT.keyQuit} keyCap="Esc" onPress={() => finish(false)} small />
             </div>
           </div>
         </>
@@ -259,20 +291,30 @@ function Menu({ onStart, results, speechSupported }: {
 }) {
   return (
     <section className={styles.menu}>
-      <div className={styles.goalCard}>
-        <span className={styles.goalLabel}>{TEXT.goal}</span>
-        {/* eslint-disable-next-line @next/next/no-img-element -- 装飾の小さな画像 */}
-        <img src="/experience/pizza_0291.svg" alt="" width={56} height={56} />
-        <span className={styles.goalValue}>{TEXT.goalValue}</span>
-      </div>
+      <div className={styles.menuTop}>
+        <div className={styles.goalCard}>
+          <span className={styles.goalLabel}>{TEXT.goal}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- 装飾の小さな画像 */}
+          <img src="/experience/pizza_0291.svg" alt="" width={64} height={64} />
+          <span className={styles.goalValue}>
+            {TEXT.goalValueLines.map(l => <span key={l} className={styles.nowrap}>{l}</span>)}
+          </span>
+        </div>
 
-      <div className={styles.keysCard} aria-label={TEXT.keys}>
-        <KeyHint cap="↓" label={TEXT.keyNext} />
-        <KeyHint cap="↑" label={TEXT.keyPrev} />
-        <KeyHint cap="Tab" label={TEXT.keyTab} />
-        <KeyHint cap="Enter" label={TEXT.keyEnter} />
-        <KeyHint cap="R" label={TEXT.keyRepeat} />
-        <KeyHint cap="Esc" label={TEXT.keyQuit} />
+        {/* 主に使う 3 つのキーだけを大きく見せ、ほかは小さくまとめる */}
+        <div className={styles.keysCard} aria-label={TEXT.keys}>
+          <div className={styles.keysMain}>
+            <KeyHint cap="↓" label={TEXT.keyNext} big />
+            <KeyHint cap="↑" label={TEXT.keyPrev} big />
+            <KeyHint cap="Enter" label={TEXT.keyEnter} big />
+          </div>
+          <div className={styles.keysMore}>
+            <span className={styles.keysMoreLabel}>{TEXT.moreKeys}</span>
+            <KeyHint cap="Tab" label={TEXT.keyTab} />
+            <KeyHint cap="R" label={TEXT.keyRepeat} />
+            <KeyHint cap="Esc" label={TEXT.keyQuit} />
+          </div>
+        </div>
       </div>
 
       <p className={styles.sameLook}>{TEXT.sameLook}</p>
@@ -287,6 +329,7 @@ function Menu({ onStart, results, speechSupported }: {
               {r && (
                 <span className={styles.versionScore} data-success={r.success}>
                   {r.success ? `${fmtSec(r.ms)}${TEXT.seconds}` : TEXT.failed}
+                  {r.success && <Stars count={starsOf(r)} small />}
                 </span>
               )}
               <span className={styles.versionStart}>{TEXT.start}</span>
@@ -299,21 +342,28 @@ function Menu({ onStart, results, speechSupported }: {
   );
 }
 
-function KeyHint({ cap, label }: { cap: string; label: string }) {
+function KeyHint({ cap, label, big }: { cap: string; label: string; big?: boolean }) {
   return (
-    <div className={styles.keyHint}>
+    <div className={styles.keyHint} data-big={big}>
       <kbd className={styles.kbd}>{cap}</kbd>
       <span>{label}</span>
     </div>
   );
 }
 
-function PadButton({ label, keyCap, onPress, primary }: { label: string; keyCap: string; onPress: () => void; primary?: boolean }) {
+function PadButton({ label, keyCap, onPress, primary, small }: {
+  label: string;
+  keyCap: string;
+  onPress: () => void;
+  primary?: boolean;
+  small?: boolean;
+}) {
   return (
     <button
       type="button"
       className={styles.padBtn}
       data-primary={primary}
+      data-small={small}
       aria-label={label}
       // キーボードの Enter は暗転中の操作に割り当てているので、ボタン自体はポインター操作用
       onPointerDown={e => { e.preventDefault(); onPress(); }}
@@ -337,6 +387,37 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
   );
 }
 
+// ── 星 ────────────────────────────────────────────────
+function Stars({ count, small }: { count: number; small?: boolean }) {
+  return (
+    <span className={styles.stars} data-small={small} role="img" aria-label={TEXT.starsLabel(count)}>
+      {[0, 1, 2].map(i => (
+        <svg key={i} viewBox="0 0 24 24" className={styles.star} data-on={i < count} style={{ animationDelay: `${300 + i * 180}ms` }} aria-hidden="true">
+          <path d="M12 2.6l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.4l6.6-.8z" />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+// ── ピザが届く演出 ────────────────────────────────────
+function Delivery() {
+  return (
+    <div className={styles.delivery} aria-hidden="true">
+      <div className={styles.deliveryBox}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- 装飾の小さな画像 */}
+        <img src="/experience/pizza_0291.svg" alt="" width={110} height={110} className={styles.deliveryPizza} />
+        {/* eslint-disable-next-line @next/next/no-img-element -- 装飾の小さな画像 */}
+        <img src="/experience/pizza_0291.svg" alt="" width={110} height={110} className={styles.deliveryPizza} />
+      </div>
+      <span className={styles.deliveryText}>{TEXT.delivered}</span>
+      {Array.from({ length: CONFETTI_COUNT }, (_, i) => (
+        <span key={i} className={styles.confetti} data-i={i % 4} style={{ left: `${6 + i * 6.6}%`, animationDelay: `${(i % 5) * 90}ms` }} />
+      ))}
+    </div>
+  );
+}
+
 // ── 結果: 暗闇の中の道すじ ────────────────────────────
 function PathOverlay({ path }: { path: PathPoint[] }) {
   const d = useMemo(() => path.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" "), [path]);
@@ -353,8 +434,8 @@ function PathOverlay({ path }: { path: PathPoint[] }) {
   );
 }
 
-function ResultPanel({ version, result, onRetry, onOther, onMenu, otherDone }: {
-  version: Version;
+function ResultPanel({ versionLabel, result, onRetry, onOther, onMenu, otherDone }: {
+  versionLabel: string;
   result: Result;
   onRetry: () => void;
   onOther: () => void;
@@ -363,11 +444,12 @@ function ResultPanel({ version, result, onRetry, onOther, onMenu, otherDone }: {
 }) {
   return (
     <section className={styles.result} aria-live="polite">
-      <span className={styles.hudBadge}>{version === "before" ? TEXT.before : TEXT.after}</span>
+      <span className={styles.hudBadge}>{versionLabel}</span>
       <p className={styles.resultHead} data-success={result.success}>
         <span className={styles.resultIcon} aria-hidden="true">{result.success ? "✓" : "✕"}</span>
         {result.success ? TEXT.success : TEXT.failed}
       </p>
+      <Stars count={starsOf(result)} />
       <dl className={styles.stats}>
         <div><dt>{TEXT.time}</dt><dd>{fmtSec(result.ms)}<small>{TEXT.seconds}</small></dd></div>
         <div><dt>{TEXT.movesLabel}</dt><dd>{result.moves}<small>{TEXT.movesUnit}</small></dd></div>
@@ -387,9 +469,46 @@ function ResultPanel({ version, result, onRetry, onOther, onMenu, otherDone }: {
   );
 }
 
+// ── きこえたこと と ほんとうは ──────────────────────────
+// 読み上げで聞こえた言葉と、画面上の実物を並べる。分からない言葉は赤で示し、
+// うまくいかなかったのは遊んだ人のせいではなく、画面の作りのせいだと一目で分かるようにする
+function HeardVsSeen({ version, result }: { version: Version; result: Result }) {
+  const rows = heardRows(result.path);
+  const unclear = rows.filter(isUnclear).length;
+  const verdict = version === "before"
+    ? TEXT.verdictBefore
+    : result.success ? TEXT.verdictAfterOk : TEXT.verdictAfterNg;
+  return (
+    <section className={styles.heard} data-version={version}>
+      <p className={styles.heardVerdict}>{verdict}</p>
+      {rows.length > 0 && (
+        <>
+          <p className={styles.heardCount} data-bad={unclear > 0}>{TEXT.unclearCount(unclear, rows.length)}</p>
+          <table className={styles.heardTable}>
+            <thead>
+              <tr>
+                <th scope="col"><span aria-hidden="true" className={styles.heardIcon}>👂</span>{TEXT.heard}</th>
+                <th scope="col"><span aria-hidden="true" className={styles.heardIcon}>👀</span>{TEXT.seen}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((p, i) => (
+                <tr key={i} data-unclear={isUnclear(p)}>
+                  <td>{p.kind === "miss" ? `${p.label} → ${READER_TEXT.noReaction}` : p.label}</td>
+                  <td>{p.seen}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </section>
+  );
+}
+
 // ── くらべる ──────────────────────────────────────────
 function Compare({ before, after }: { before: Result; after: Result }) {
-  // 注文できなかった側は時間の比較にならないので、棒は端まで伸ばし「たどり着けず」と示す
+  // 注文できなかった側は時間の比較にならないので、棒は端まで伸ばし「とどかず」と示す
   const max = Math.max(...[before, after].filter(r => r.success).map(r => r.ms), 1);
   const rows: { v: Version; r: Result }[] = [{ v: "before", r: before }, { v: "after", r: after }];
   return (
@@ -409,6 +528,7 @@ function Compare({ before, after }: { before: Result; after: Result }) {
           <span className={styles.compareValue} data-success={r.success}>
             {r.success ? `${fmtSec(r.ms)}${TEXT.seconds}` : TEXT.notReached}
           </span>
+          <Stars count={starsOf(r)} small />
         </div>
       ))}
     </section>

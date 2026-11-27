@@ -10,7 +10,8 @@ export type PathPoint = {
   x: number; // ステージ内の座標（px）
   y: number;
   kind: "control" | "content" | "miss";
-  label: string;
+  label: string; // 読み上げで聞こえた言葉
+  seen: string;  // 画面上の実物（data-see 属性。結果画面で「ほんとうは」として並べる）
 };
 
 export type Ripple = {
@@ -22,16 +23,23 @@ export type Ripple = {
   kind: PathPoint["kind"];
 };
 
+// 子どもにも分かる短い言葉にする（部品の読み上げ自体は、実際のスクリーンリーダーに近い言い方のまま）
 export const READER_TEXT = {
-  start: "画面が暗くなりました。下の矢印キーで次の項目、上の矢印キーで前の項目、エンターキーで決定します。",
-  noReaction: "反応がありません",
-  edge: "これ以上ありません",
-  noControl: "操作できる部品が見つかりません",
+  start: "くらくなったよ。したの やじるしで つぎ。エンターで えらぶ。",
+  noReaction: "なにも おきない",
+  edge: "ここで おしまい",
+  noControl: "ボタンが みつからない",
 } as const;
+
+// 画面上の実物の名前（data-see 属性）。無ければ見えている文字を使う
+function seenOf(el: Element): string {
+  const tagged = el.closest("[data-see]")?.getAttribute("data-see");
+  return tagged ?? (el.textContent ?? "").replace(/\s+/g, " ").trim();
+}
 
 export function useReaderSession(stageRef: RefObject<HTMLDivElement | null>, active: boolean) {
   const speech = useSpeech();
-  const { ping, ensure } = useSpatialPing();
+  const { ping, ensure, jingle } = useSpatialPing();
   const currentRef = useRef<Element | null>(null);
   const [moves, setMoves] = useState(0);
   const [path, setPath] = useState<PathPoint[]>([]);
@@ -60,7 +68,7 @@ export function useReaderSession(stageRef: RefObject<HTMLDivElement | null>, act
     setRipple({ key: rippleKey.current, left: r.left, top: r.top, width: r.width, height: r.height, kind });
     const text = describe(item);
     speech.speak(kind === "miss" ? READER_TEXT.noReaction : text);
-    setPath(p => [...p, { x: cx - s.left, y: cy - s.top, kind, label: text }]);
+    setPath(p => [...p, { x: cx - s.left, y: cy - s.top, kind, label: text, seen: seenOf(item.el) }]);
     setMoves(m => m + 1);
   }, [stageRef, ping, speech]);
 
@@ -136,5 +144,5 @@ export function useReaderSession(stageRef: RefObject<HTMLDivElement | null>, act
     return () => obs.disconnect();
   }, [stageRef, active]);
 
-  return { speech, ensure, ping, moves, path, ripple, move, activate, repeat, reset };
+  return { speech, ensure, ping, jingle, moves, path, ripple, move, activate, repeat, reset };
 }
