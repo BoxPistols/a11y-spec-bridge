@@ -134,3 +134,16 @@ export async function getStoreStats(): Promise<StoreStats> {
     pendingVectorCount: info.pendingVectorCount ?? 0,
   };
 }
+
+// ── 休止の防止（定期実行から呼ぶ） ─────────────────────
+// Upstash の無料プランは長くアクセスが無いとインデックスを休止する。
+// 利用実績として数えられる検索を 1 件だけ実行する。Embedding は使わず固定のベクトルで検索するため OpenAI の費用はかからない
+export const EMBEDDING_DIMENSIONS = 1536;
+
+export async function touchIndex(): Promise<{ vectorCount: number; matched: number }> {
+  const index = getIndex();
+  const probe = Array.from({ length: EMBEDDING_DIMENSIONS }, (_, i) => (i === 0 ? 1 : 0));
+  const res = await index.query({ vector: probe, topK: 1 });
+  const info = await index.info();
+  return { vectorCount: info.vectorCount ?? 0, matched: res.length };
+}
