@@ -7,19 +7,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 export const SPEECH_RATE_DEFAULT = 1.15;
 
 export type Speech = {
-  supported: boolean;
+  // null は判定前（サーバー描画と読み込み直後）。誤って「非対応」と表示しないために区別する
+  supported: boolean | null;
   speak: (text: string) => void;
   cancel: () => void;
   lastText: string;
 };
 
 export function useSpeech(rate: number = SPEECH_RATE_DEFAULT): Speech {
-  const [supported, setSupported] = useState(false);
+  const [supported, setSupported] = useState<boolean | null>(null);
   const [lastText, setLastText] = useState("");
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) { setSupported(false); return; }
     setSupported(true);
     const pick = () => {
       const voices = window.speechSynthesis.getVoices();
