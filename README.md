@@ -47,6 +47,24 @@ WCAG 2.2 / WAI-ARIA / MDN の仕様を根拠に、デザインと実装の判断
 |---|---|
 | ![学習ページのフロー解説](docs/images/learn.jpg) | ![RAG シミュレーター](docs/images/rag-simulator.gif) |
 
+### 暗転チャレンジ（`/experience`）
+
+画面を真っ暗にして、読み上げと効果音だけでピザを注文する体験ページです。見た目がまったく同じ「対応前」と「対応後」の 2 つの画面で挑戦し、かかった時間・操作回数・暗闇の中で動いた道すじを比べます。
+
+| 選ぶ | 暗転中（波紋と字幕） |
+|---|---|
+| ![暗転チャレンジのメニュー](docs/images/blackout-menu.jpg) | ![暗転中の操作](docs/images/blackout-play.gif) |
+
+| 対応後: 9 回の操作で注文できた | 対応前: 「ボタン」としか読まれず注文できない |
+|---|---|
+| ![対応後の結果](docs/images/blackout-result-after.jpg) | ![対応前の結果](docs/images/blackout-result-before.jpg) |
+
+- 読み上げは Web Speech API（日本語の声）。項目の位置は Web Audio の効果音で知らせ、横位置を左右の定位、縦位置を音の高さに対応させています
+- 読み上げる内容は `src/lib/virtualReader.ts` が DOM から組み立てます（ロール → アクセシブルネーム → 状態）。対応前の画面は `div` にクリックを付けただけのサイズ選択、アイコンだけのボタン、`alt` の無い画像、色だけのエラーで作っており、読み上げでは「pizza_0291.svg 画像」「ボタン」としか伝わりません
+- 対応後の画面は数量の変化とエラーを `aria-live` / `role="alert"` で知らせます。`MutationObserver` で変化を拾って読み上げます
+- 操作: ↓↑ で次 / 前の項目、Tab で次の操作部品、Enter / Space で決定、R でもう一度、Esc でやめる。画面下のボタンでも操作できます（タッチ端末向け）
+- 簡易再現のため、実際のスクリーンリーダー（VoiceOver / NVDA など）の挙動とは一致しない部分があります
+
 ### トップ画面
 
 ![トップ画面](docs/images/home.jpg)
@@ -94,7 +112,7 @@ WCAG 2.2 / WAI-ARIA / MDN の仕様を根拠に、デザインと実装の判断
 | ファイル取り込み | pdf-parse | ^1.1 | `serverExternalPackages` で外部化 |
 | クロール | Node `https` + 正規表現 | — | 依存ゼロの軽量 HTML→テキスト変換（cheerio / turndown は依存に残るが crawl.ts では未使用） |
 | スクリプト実行 | tsx | ^4 | `scripts/*.ts` を直接実行 |
-| テスト | Vitest + happy-dom | ^4 / ^20 | 13 ファイル / 187 テスト |
+| テスト | Vitest + happy-dom | ^4 / ^20 | 14 ファイル / 197 テスト |
 | ホスティング | Vercel | — | API ルートの `maxDuration: 30` |
 
 ---
@@ -156,6 +174,7 @@ flowchart LR
 │   │   ├── layout.tsx           # メタデータ・viewport（ピンチズーム禁止しない）・テーマ初期化
 │   │   ├── page.tsx             # チャット UI 本体と表示用コンポーネント
 │   │   ├── learn/page.tsx       # RAG の仕組みを段階的に見せる解説ページ（シミュレーター付き）
+│   │   ├── experience/          # 暗転チャレンジ（読み上げだけで操作する体験。対応前 / 対応後の注文画面）
 │   │   └── api/
 │   │       ├── query/           # 質問 → 検索 → 生成
 │   │       ├── ingest/          # ドキュメント追加（Layer 2）
@@ -169,6 +188,7 @@ flowchart LR
 │       ├── ratelimit.ts         # Upstash Redis による日次制限・招待コード
 │       ├── ingestAuth.ts        # /api/ingest の書き込み許可（トークン・招待コード）
 │       ├── sources.ts           # ソースタグの許可リストとフィルタ式の組み立て
+│       ├── virtualReader.ts     # 仮想スクリーンリーダー（読み上げ順・アクセシブルネーム・読み上げ文）
 │       ├── helpers.ts           # モデル ID 正規化・グラウンディング判定・入出力
 │       ├── verdict.ts           # ✅ / ❌ / ⚠️ 判定行のパース
 │       ├── a11yUtils.ts         # WCAG 2.1 相対輝度・コントラスト比
@@ -601,6 +621,7 @@ npm test   # vitest run
 | `helpers.test.ts` | モデル ID 正規化・グラウンディング・インポート検証 |
 | `sources.test.ts` | ソースの許可リスト・フィルタ注入の拒否 |
 | `ingestAuth.test.ts` | トークン・招待コードによる書き込み許可 |
+| `virtualReader.test.ts` | 読み上げ順・アクセシブルネーム・対応前 / 対応後の読み上げ文 |
 
 DOM を使うテストは happy-dom 上で動きます。API ルートと LLM 呼び出しにはテストがありません。
 
@@ -666,6 +687,7 @@ DOM を使うテストは happy-dom 上で動きます。API ルートと LLM �
 - サジェスト: 6 テーマ・23 カテゴリ・218 問、初回表示のおすすめ 8 問
 - 出典カード: MDN / WCAG / WAI-ARIA / CURATED / CUSTOM とスコアを表示
 - 会話履歴: 検索、個別 / 一括の書き出し、読み込み
+- 暗転チャレンジ（`/experience`）: 画面を暗くして読み上げだけでピザを注文し、対応前と対応後で時間と道すじを比べる
 - 学習ページ（`/learn`）: チャンク分割 → ベクトル化 → 検索 → 生成の流れを、手順ごとのシミュレーターとコード参照で解説
 - モバイル: ドロワー型サイドバー、`100dvh` と safe-area 対応、タップ領域 44px、入力欄 16px（iOS の自動ズーム回避）、ピンチズームは禁止しない
 - `prefers-reduced-motion` を尊重

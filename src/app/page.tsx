@@ -963,6 +963,16 @@ export default function Page() {
                       解説を見る {ICO.arrowRight}
                     </Link>
                   </div>
+                  {/* 体験ページへの入口（画面を暗くして読み上げだけで操作する） */}
+                  <div className={styles.learnBanner}>
+                    <div className={styles.learnBannerText}>
+                      <div className={styles.learnBannerTitle}>暗転チャレンジ</div>
+                      <div className={styles.learnBannerDesc}>画面を真っ暗にして、読み上げだけでピザを注文できるか。対応前と対応後で比べる</div>
+                    </div>
+                    <Link href="/experience" className={styles.learnBannerLink}>
+                      挑戦する {ICO.arrowRight}
+                    </Link>
+                  </div>
                 </>
               )}
             </div>

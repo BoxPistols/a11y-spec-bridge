@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <defs>
+    <radialGradient id="crust" cx="50%" cy="45%" r="55%">
+      <stop offset="78%" stop-color="#e7b56a"/>
+      <stop offset="90%" stop-color="#c98a3c"/>
+      <stop offset="100%" stop-color="#8a5523"/>
+    </radialGradient>
+    <radialGradient id="sauce" cx="45%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#d9452b"/>
+      <stop offset="100%" stop-color="#9e2414"/>
+    </radialGradient>
+    <radialGradient id="cheese" cx="40%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#fff7df"/>
+      <stop offset="100%" stop-color="#f1d79a"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.2"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <circle cx="120" cy="120" r="108" fill="url(#crust)"/>
+    <circle cx="120" cy="120" r="92" fill="url(#sauce)"/>
+  </g>
+  <g filter="url(#soft)">
+    <path d="M78 92c10-14 30-12 36 2s-6 28-22 28-24-16-14-30z" fill="url(#cheese)"/>
+    <path d="M132 70c14-6 30 4 30 18s-14 22-28 18-16-30-2-36z" fill="url(#cheese)"/>
+    <path d="M140 132c16-4 32 8 28 24s-22 20-34 12-10-32 6-36z" fill="url(#cheese)"/>
+    <path d="M76 140c12-8 30 0 30 14s-12 24-26 20-16-26-4-34z" fill="url(#cheese)"/>
+    <path d="M108 112c8-6 20-2 22 6s-6 16-16 15-14-14-6-21z" fill="url(#cheese)"/>
+  </g>
+  <g fill="#2f7d32">
+    <ellipse cx="96" cy="104" rx="9" ry="5" transform="rotate(-30 96 104)"/>
+    <ellipse cx="150" cy="86" rx="9" ry="5" transform="rotate(20 150 86)"/>
+    <ellipse cx="154" cy="150" rx="9" ry="5" transform="rotate(-50 154 150)"/>
+    <ellipse cx="90" cy="156" rx="9" ry="5" transform="rotate(40 90 156)"/>
+    <ellipse cx="120" cy="122" rx="7" ry="4" transform="rotate(10 120 122)"/>
+  </g>
+  <g fill="#1d5c20" opacity=".6">
+    <path d="M92 104l8-2" stroke="#1d5c20" stroke-width="1"/>
+  </g>
+  <g fill="#fff" opacity=".25">
+    <ellipse cx="92" cy="64" rx="26" ry="8" transform="rotate(-25 92 64)"/>
+  </g>
+</svg>
