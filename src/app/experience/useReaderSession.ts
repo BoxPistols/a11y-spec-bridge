@@ -79,6 +79,12 @@ export function useReaderSession(stageRef: RefObject<HTMLDivElement | null>, act
       }
       if (!onlyControls || INTERACTIVE_ROLES.has(list[i].role)) break;
     }
+    // カーソルが未設定（-1）で操作部品が 1 つも無いと、境界に届かずにループを抜ける。その場合も「見つからない」と伝える
+    if (onlyControls && !INTERACTIVE_ROLES.has(list[i].role)) {
+      speech.speak(READER_TEXT.noControl);
+      ping(dir > 0 ? 1 : 0, 0.5, "error");
+      return;
+    }
     currentRef.current = list[i].el;
     announce(list[i]);
   }, [items, announce, speech, ping]);
