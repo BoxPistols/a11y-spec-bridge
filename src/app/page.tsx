@@ -324,7 +324,13 @@ export default function Page() {
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res  = await fetch("/api/ingest", { method: "POST", body: fd });
+      // 共有 DB への書き込みは招待コードが必要（サーバー側で検証する）
+      const safeInvite = headerSafe(inviteCode);
+      const res  = await fetch("/api/ingest", {
+        method: "POST",
+        body: fd,
+        headers: safeInvite ? { "x-invite-code": safeInvite } : {},
+      });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setCustomDocs(prev => [...prev, data.title]);
@@ -343,7 +349,7 @@ export default function Page() {
     } finally {
       setUploading(false);
     }
-  }, []);
+  }, [inviteCode]); // 招待コードを送るため依存に加える
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -537,7 +543,7 @@ export default function Page() {
 
         {/* カスタム追加 */}
         <div className={styles.sideSection}>
-          <div className={styles.sideLabel}>独自ガイドを追加 <HelpTip text="自社のデザインガイドやコーディング規約（PDF / TXT / MD）をアップロードすると、回答の根拠に加わります。" /></div>
+          <div className={styles.sideLabel}>独自ガイドを追加 <HelpTip text="自社のデザインガイドやコーディング規約（PDF / TXT / MD、5MBまで）をアップロードすると、回答の根拠に加わります。追加には招待コードが必要です。" /></div>
           <div
             className={`${styles.dropZone} ${dragOver ? styles.dropActive : ""}`}
             onDragOver={e => { e.preventDefault(); setDragOver(true); }}
