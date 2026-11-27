@@ -81,6 +81,8 @@ export default function ExperiencePage() {
   const [showCaption, setShowCaption] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(0);
+  // 終了処理は 1 回の挑戦につき 1 回だけ（時間切れの判定とキー操作が重なっても結果を上書きしない）
+  const finishedRef = useRef(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const sinkRef = useRef<HTMLDivElement | null>(null);
 
@@ -88,6 +90,8 @@ export default function ExperiencePage() {
   const { speech, ensure, ping, moves, path, ripple, move, activate, repeat, reset } = session;
 
   const finish = useCallback((success: boolean, reason: "order" | "timeup" | "quit" = success ? "order" : "quit") => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     const ms = Date.now() - startedAt.current;
     setResults(r => ({ ...r, [version]: { success, ms, moves, path } }));
     setPhase("result");
@@ -108,6 +112,7 @@ export default function ExperiencePage() {
     reset();
     ensure(); // 利用者の操作の直後に音声の準備をする（ブラウザの自動再生の制限）
     startedAt.current = Date.now();
+    finishedRef.current = false;
     setElapsed(0);
     setPhase("playing");
     speech.speak(READER_TEXT.start);
