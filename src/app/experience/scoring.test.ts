@@ -45,3 +45,13 @@ describe("heardRows", () => {
     expect(seen.slice(-3)).toEqual(["s9", "s10", "s11"]);
   });
 });
+
+describe("heardRows（分からない言葉が多いとき）", () => {
+  it("最初の 2 行と最後の 3 行は必ず残る", () => {
+    const path = Array.from({ length: 20 }, (_, i) => pt(i >= 2 && i < 17 ? "ボタン" : `項目${i} ボタン`, `s${i}`));
+    const seen = heardRows(path).map(r => r.seen);
+    expect(seen.length).toBe(HEARD_ROWS_MAX);
+    expect(seen.slice(0, 2)).toEqual(["s0", "s1"]);
+    expect(seen.slice(-3)).toEqual(["s17", "s18", "s19"]);
+  });
+});

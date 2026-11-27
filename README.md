@@ -128,7 +128,7 @@
 | ファイル取り込み | pdf-parse | ^1.1 | `serverExternalPackages` で外部化 |
 | クロール | Node `https` + 正規表現 | — | 依存ゼロの軽量 HTML→テキスト変換（cheerio / turndown は依存に残るが crawl.ts では未使用） |
 | スクリプト実行 | tsx | ^4 | `scripts/*.ts` を直接実行 |
-| テスト | Vitest + happy-dom | ^4 / ^20 | 16 ファイル / 206 テスト |
+| テスト | Vitest + happy-dom | ^4 / ^20 | 16 ファイル / 207 テスト |
 | ホスティング | Vercel | — | API ルートの `maxDuration: 30` |
 
 ---

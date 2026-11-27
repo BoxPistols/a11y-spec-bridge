@@ -32,8 +32,8 @@ export function isUnclear(p: PathPoint): boolean {
   return false;
 }
 
-// 同じ部品が続いたら 1 行にまとめる。行が多いときは、分からない言葉・最初の 2 行・最後の 3 行
-// （数の変化や注文ボタンなど、結果に効いた部分）を優先し、順番は保ったまま最大行数まで並べる
+// 同じ部品が続いたら 1 行にまとめる。行が多いときは、最初の 2 行と最後の 3 行（数の変化や注文ボタンなど、
+// 結果に効いた部分）を必ず残し、残りの枠に分からない言葉を入れる。順番は保つ
 export function heardRows(path: PathPoint[]): PathPoint[] {
   const rows: PathPoint[] = [];
   for (const p of path) {
@@ -42,9 +42,11 @@ export function heardRows(path: PathPoint[]): PathPoint[] {
     rows.push(p);
   }
   if (rows.length <= HEARD_ROWS_MAX) return rows;
-  const keep = new Set<number>();
-  rows.forEach((p, i) => { if (isUnclear(p)) keep.add(i); });
-  [0, 1, rows.length - 3, rows.length - 2, rows.length - 1].forEach(i => keep.add(i));
-  return rows.filter((_, i) => keep.has(i)).slice(-HEARD_ROWS_MAX);
+  // 最初の 2 行と最後の 3 行は必ず残し、残りの枠を分からない言葉で（前から順に）埋める
+  const keep = new Set<number>([0, 1, rows.length - 3, rows.length - 2, rows.length - 1]);
+  for (let i = 0; i < rows.length && keep.size < HEARD_ROWS_MAX; i++) {
+    if (isUnclear(rows[i])) keep.add(i);
+  }
+  return rows.filter((_, i) => keep.has(i));
 }
 

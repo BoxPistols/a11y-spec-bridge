@@ -103,11 +103,17 @@ export default function ExperiencePage() {
   const session = useReaderSession(stageRef, phase === "playing");
   const { speech, ensure, ping, jingle, moves, path, ripple, move, activate, repeat, reset } = session;
 
+  // 操作の回数と道すじは ref で読む。finish が操作のたびに作り直されると、時間切れのタイマーも
+  // 毎回やり直しになり、速く操作し続けると時間切れにならないため
+  const latestRef = useRef({ moves, path });
+  useEffect(() => { latestRef.current = { moves, path }; }, [moves, path]);
+
   const finish = useCallback((success: boolean, reason: "order" | "timeup" | "quit" = success ? "order" : "quit") => {
     if (finishedRef.current) return;
     finishedRef.current = true;
     const ms = Date.now() - startedAt.current;
-    setResults(r => ({ ...r, [version]: { success, ms, moves, path } }));
+    const { moves: m, path: pth } = latestRef.current;
+    setResults(r => ({ ...r, [version]: { success, ms, moves: m, path: pth } }));
     setPhase("result");
     if (success) {
       jingle();
@@ -117,7 +123,7 @@ export default function ExperiencePage() {
       ping(0.5, 0.5, "error");
       speech.speak(reason === "timeup" ? TEXT.timeUpVoice : TEXT.quitVoice);
     }
-  }, [version, moves, path, ping, jingle, speech]);
+  }, [version, ping, jingle, speech]);
 
   // ピザが届く演出は一定時間で消し、道すじが見えるようにする
   useEffect(() => {
