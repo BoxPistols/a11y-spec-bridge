@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
     }
 
     const title = file.name.replace(/\.[^.]+$/, "").slice(0, 200);
-    const chunks = splitText(text, title);
+    // ファイルアップロードは常に CUSTOM 層へ書き込む（CURATED は JSON 経路の管理者トークンのみ）
+    const chunks = splitText(text, title, 600, 60, "CUSTOM");
     await ingestChunks(chunks);
     return NextResponse.json({ filename: file.name, chunks: chunks.length, title });
   } catch (e: unknown) {

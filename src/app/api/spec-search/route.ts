@@ -14,8 +14,6 @@ export const runtime = "nodejs";
  */
 export async function POST(req: NextRequest) {
   try {
-    // CORS: 同一オリジン以外からも呼べるように
-    const origin = req.headers.get("origin") ?? "";
 
     const { query, k = 6, source } = await req.json() as {
       query?: unknown;
@@ -37,7 +35,8 @@ export async function POST(req: NextRequest) {
     const results = await search(query, topK, parsedSource.source);
 
     const response = NextResponse.json({ results, count: results.length });
-    response.headers.set("Access-Control-Allow-Origin", origin || "*");
+    // 公開の読み取り専用 API。Cookie は使わないため、送信元を反射せず "*" を明示する
+    response.headers.set("Access-Control-Allow-Origin", "*");
     response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
     response.headers.set("Access-Control-Allow-Headers", "Content-Type");
     return response;
@@ -48,12 +47,11 @@ export async function POST(req: NextRequest) {
 }
 
 // CORS preflight
-export async function OPTIONS(req: NextRequest) {
-  const origin = req.headers.get("origin") ?? "";
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": origin || "*",
+      "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
     },
