@@ -855,7 +855,9 @@ export default function Page() {
               <p className={styles.welcomeDesc}>{HOME_TEXT.desc}</p>
 
               {/* 体験する → 判断する → チームに配る の 3 段階 */}
-              <ol className={styles.steps}>
+              {/* list-style: none だと Safari の VoiceOver はリストとして読まないため role="list" を明示する。
+                  順番はリストの「3 項目中 1 番目」で伝わるので、見た目の番号は二重に読まれないよう aria-hidden にする */}
+              <ol className={styles.steps} role="list">
                 <li className={styles.step}>
                   <span className={styles.stepNum} aria-hidden="true">1</span>
                   <div className={styles.stepBody}>
