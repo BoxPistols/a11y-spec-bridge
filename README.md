@@ -112,7 +112,7 @@ WCAG 2.2 / WAI-ARIA / MDN の仕様を根拠に、デザインと実装の判断
 | ファイル取り込み | pdf-parse | ^1.1 | `serverExternalPackages` で外部化 |
 | クロール | Node `https` + 正規表現 | — | 依存ゼロの軽量 HTML→テキスト変換（cheerio / turndown は依存に残るが crawl.ts では未使用） |
 | スクリプト実行 | tsx | ^4 | `scripts/*.ts` を直接実行 |
-| テスト | Vitest + happy-dom | ^4 / ^20 | 14 ファイル / 197 テスト |
+| テスト | Vitest + happy-dom | ^4 / ^20 | 15 ファイル / 199 テスト |
 | ホスティング | Vercel | — | API ルートの `maxDuration: 30` |
 
 ---
@@ -180,6 +180,7 @@ flowchart LR
 │   │       ├── ingest/          # ドキュメント追加（Layer 2）
 │   │       ├── spec-search/     # 外部ツール向けの検索のみ API（CORS 開放）
 │   │       ├── status/          # ベクトル件数・OpenAI キーの有無
+│   │       ├── keepalive/       # インデックスの休止防止（Vercel Cron から毎日）
 │   │       ├── quota/           # 残り回数
 │   │       └── verify-invite/   # 招待コード検証
 │   └── lib/
@@ -188,6 +189,7 @@ flowchart LR
 │       ├── ratelimit.ts         # Upstash Redis による日次制限・招待コード
 │       ├── ingestAuth.ts        # /api/ingest の書き込み許可（トークン・招待コード）
 │       ├── sources.ts           # ソースタグの許可リストとフィルタ式の組み立て
+│       ├── cronAuth.ts          # 定期実行（Vercel Cron）からの呼び出しの確認
 │       ├── virtualReader.ts     # 仮想スクリーンリーダー（読み上げ順・アクセシブルネーム・読み上げ文）
 │       ├── helpers.ts           # モデル ID 正規化・グラウンディング判定・入出力
 │       ├── verdict.ts           # ✅ / ❌ / ⚠️ 判定行のパース
@@ -207,7 +209,7 @@ flowchart LR
 │       ├── suggests.ts          # サジェスト 23 カテゴリ / 218 問
 │       ├── icons.tsx            # インライン SVG アイコン
 │       └── types.ts             # 共有型
-├── vercel.json                  # API ルートの maxDuration
+├── vercel.json                  # API ルートの maxDuration、休止防止の定期実行
 └── next.config.ts               # pdf-parse を serverExternalPackages に
 ```
 
@@ -492,6 +494,14 @@ Layer 2 にドキュメントを追加します。`x-ingest-token` か `x-invite
 { "vectorCount": 3524, "pendingVectorCount": 0, "hasOpenAI": true }
 ```
 
+### `GET /api/keepalive`
+
+インデックスの休止を防ぐための軽いアクセスです（Vercel Cron から毎日呼ばれます）。`CRON_SECRET` を設定した場合は `Authorization: Bearer <CRON_SECRET>` が必要です（Vercel は自動で付けます）。
+
+```json
+{ "ok": true, "vectorCount": 3524, "matched": 1, "at": "2026-11-27T18:17:00.000Z" }
+```
+
 ### `GET /api/quota`
 
 `x-invite-code` に応じた `{ remaining, limit }`。Redis 未設定時は上限値をそのまま返します。
@@ -552,6 +562,7 @@ Layer 2 にドキュメントを追加します。`x-ingest-token` か `x-invite
 | `RATE_LIMIT_INVITED` | 任意 | 招待ありの日次上限（既定 30） |
 | `INVITE_CODES` | 任意 | 招待コード（カンマ区切り）。画面からのガイド追加にも必要 |
 | `INGEST_TOKEN` | 任意 | `/api/ingest` を管理者・スクリプトから呼ぶためのトークン（`x-ingest-token` ヘッダー） |
+| `CRON_SECRET` | 任意 | 設定すると `/api/keepalive` は Vercel Cron からの呼び出しだけを受け付ける |
 
 Embedding は質問ごとに必ず `OPENAI_API_KEY` で呼ばれます。利用者が Gemini と自分の Google キーを選んでも、検索のための Embedding はサーバーの OpenAI キーを使います。
 
@@ -621,6 +632,7 @@ npm test   # vitest run
 | `helpers.test.ts` | モデル ID 正規化・グラウンディング・インポート検証 |
 | `sources.test.ts` | ソースの許可リスト・フィルタ注入の拒否 |
 | `ingestAuth.test.ts` | トークン・招待コードによる書き込み許可 |
+| `cronAuth.test.ts` | 定期実行からの呼び出しの確認 |
 | `virtualReader.test.ts` | 読み上げ順・アクセシブルネーム・対応前 / 対応後の読み上げ文 |
 
 DOM を使うテストは happy-dom 上で動きます。API ルートと LLM 呼び出しにはテストがありません。
@@ -632,6 +644,9 @@ DOM を使うテストは happy-dom 上で動きます。API ルートと LLM �
 - Vercel で `main` へのプッシュごとに本番デプロイされます。手順は [`DEPLOY.md`](DEPLOY.md) を参照してください。
 - `vercel.json` で API ルートの `maxDuration` を 30 秒にしています。`gpt-6-luna` の推論量を上げる、大きな PDF を取り込むなどで超える場合は 60 に変更してください。
 - **Upstash の無料プランは、8 週間アクセスが無いとインデックスが休止します。** データと URL は残り、コンソールの Vector 画面で Activate を押すと戻ります。休止中は `/api/status` と `/api/query` がエラーになります。
+  - 休止を防ぐため、`vercel.json` の `crons` で `GET /api/keepalive` を毎日 1 回（18:17 UTC = 日本時間 3:17）呼びます。固定のベクトルで検索を 1 件だけ実行するので、OpenAI の費用はかかりません
+  - 休止中に呼ばれると 503 を返すので、Vercel のログで気付けます
+  - 2026-11-27 の再開では、当日のうちに 2 回休止へ戻りました。Upstash 側の判定が日ごとの集計を使っている可能性があります。再開した当日は様子を見てください
 - モデルを差し替えるときは、実際にそのモデルで応答が返ることを確認してから `MODEL_IDS` を更新し、旧 ID を `REPLACED_MODEL_IDS` に追加してください。
 
 ---
