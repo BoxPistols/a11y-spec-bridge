@@ -112,7 +112,7 @@ WCAG 2.2 / WAI-ARIA / MDN の仕様を根拠に、デザインと実装の判断
 | ファイル取り込み | pdf-parse | ^1.1 | `serverExternalPackages` で外部化 |
 | クロール | Node `https` + 正規表現 | — | 依存ゼロの軽量 HTML→テキスト変換（cheerio / turndown は依存に残るが crawl.ts では未使用） |
 | スクリプト実行 | tsx | ^4 | `scripts/*.ts` を直接実行 |
-| テスト | Vitest + happy-dom | ^4 / ^20 | 15 ファイル / 199 テスト |
+| テスト | Vitest + happy-dom | ^4 / ^20 | 15 ファイル / 200 テスト |
 | ホスティング | Vercel | — | API ルートの `maxDuration: 30` |
 
 ---
