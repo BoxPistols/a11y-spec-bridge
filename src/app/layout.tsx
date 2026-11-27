@@ -11,14 +11,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "SpecBridge — Design × Spec Q&A",
   description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
-  metadataBase: new URL("https://a11y-spec-bridge.vercel.app"),
+  metadataBase: new URL("https://spec-bridge.vercel.app"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
     title: "SpecBridge — Design × Spec Q&A",
     description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
-    url: "https://a11y-spec-bridge.vercel.app",
+    url: "https://spec-bridge.vercel.app",
     siteName: "SpecBridge",
     locale: "ja_JP",
     type: "website",

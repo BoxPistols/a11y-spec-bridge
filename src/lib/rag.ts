@@ -6,8 +6,9 @@
 
 import OpenAI from "openai";
 import { Index } from "@upstash/vector";
+import { buildSourceFilter, type Source } from "./sources";
 
-export type Source = "MDN" | "WCAG" | "WAI-ARIA" | "CUSTOM" | "CURATED";
+export type { Source };
 
 export type SearchResult = {
   id: string;
@@ -65,7 +66,8 @@ export async function search(
     vector: qv,
     topK: k,
     includeMetadata: true,
-    filter: filterSource ? `source = '${filterSource}'` : undefined,
+    // 許可リストを通った値だけをフィルタ式に埋め込む（外部入力によるフィルタ注入を防ぐ）
+    filter: buildSourceFilter(filterSource),
   });
 
   return res.map(r => {

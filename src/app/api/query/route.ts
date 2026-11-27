@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { search, type Source } from "@/lib/rag";
+import { search } from "@/lib/rag";
+import { parseSourceParam } from "@/lib/sources";
 import { generate, type ModelId, type UserRole, type AnswerMode } from "@/lib/llm";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { parseGrounding, normalizeModelId } from "@/lib/helpers";
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
       role?: UserRole;
       mode?: AnswerMode;
       k?: number;
-      filterSource?: Source;
+      filterSource?: unknown;
       history?: { role: "user" | "assistant"; content: string }[];
     };
     // 不正値は concise に丸める（デフォルトも concise = 結論ファースト）
@@ -43,6 +44,10 @@ export async function POST(req: NextRequest) {
 
     if (!question) return NextResponse.json({ error: "question required" }, { status: 400 });
     if (!model)    return NextResponse.json({ error: "model required" },    { status: 400 });
+    // filterSource は許可リストと完全一致した値だけを通す（フィルタ注入の防止）
+    const parsedSource = parseSourceParam(filterSource);
+    if (!parsedSource.ok) return NextResponse.json({ error: parsedSource.error }, { status: 400 });
+    const topK = Math.min(Math.max(Math.trunc(Number(k)) || 6, 1), 20);
 
     // レート制限（自分のAPIキーがあればスキップ）
     if (!userApiKey) {
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     // 仕様に該当が無くても門前払いしない。検索結果が空でも generate に渡し、
     // LLM が一般知識で回答する（回答先頭の [[GENERAL]] センチネルで grounded を判定）
-    const results = await search(question, k, filterSource);
+    const results = await search(question, topK, parsedSource.source);
 
     // 一覧外のモデルは、差し替えた旧IDなら後継に、それ以外は既定のgpt-6-lunaに寄せる
     const llmRes = await generate(normalizeModelId(model), role, results, question, history, userApiKey, answerMode);

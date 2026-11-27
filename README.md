@@ -29,8 +29,9 @@ WCAG 2.2 / WAI-ARIA / MDN の仕様を根拠に、デザインと実装の判断
 14. [ナレッジベースの構築](#ナレッジベースの構築)
 15. [テスト](#テスト)
 16. [デプロイと運用](#デプロイと運用)
-17. [既知の制約と注意点](#既知の制約と注意点)
-18. [機能一覧](#機能一覧)
+17. [セキュリティ](#セキュリティ)
+18. [既知の制約と注意点](#既知の制約と注意点)
+19. [機能一覧](#機能一覧)
 
 ---
 
@@ -50,7 +51,7 @@ WCAG 2.2 / WAI-ARIA / MDN の仕様を根拠に、デザインと実装の判断
 | ファイル取り込み | pdf-parse | ^1.1 | `serverExternalPackages` で外部化 |
 | クロール | Node `https` + 正規表現 | — | 依存ゼロの軽量 HTML→テキスト変換（cheerio / turndown は依存に残るが crawl.ts では未使用） |
 | スクリプト実行 | tsx | ^4 | `scripts/*.ts` を直接実行 |
-| テスト | Vitest + happy-dom | ^4 / ^20 | 11 ファイル / 174 テスト |
+| テスト | Vitest + happy-dom | ^4 / ^20 | 13 ファイル / 187 テスト |
 | ホスティング | Vercel | — | API ルートの `maxDuration: 30` |
 
 ---
@@ -123,6 +124,8 @@ flowchart LR
 │       ├── rag.ts               # Embedding・検索・チャンク分割・取り込み
 │       ├── llm.ts               # プロンプト構築・OpenAI / Gemini 呼び出し・再試行
 │       ├── ratelimit.ts         # Upstash Redis による日次制限・招待コード
+│       ├── ingestAuth.ts        # /api/ingest の書き込み許可（トークン・招待コード）
+│       ├── sources.ts           # ソースタグの許可リストとフィルタ式の組み立て
 │       ├── helpers.ts           # モデル ID 正規化・グラウンディング判定・入出力
 │       ├── verdict.ts           # ✅ / ❌ / ⚠️ 判定行のパース
 │       ├── a11yUtils.ts         # WCAG 2.1 相対輝度・コントラスト比
@@ -186,7 +189,7 @@ search(query: string, k = 6, filterSource?: Source): Promise<SearchResult[]>
 
 1. 質問文を `text-embedding-3-small` でベクトル化
 2. `index.query({ vector, topK: k, includeMetadata: true, filter })` で上位 k 件を取得
-3. `filterSource` 指定時は Upstash のメタデータフィルタ `source = 'WCAG'` で絞り込み
+3. `filterSource` 指定時は Upstash のメタデータフィルタ `source = 'WCAG'` で絞り込み（値は許可リストで検証済み）
 
 OpenAI クライアントと Upstash `Index` はモジュールスコープのシングルトンで、ウォームなサーバーレス関数では再利用されます。
 
@@ -399,7 +402,7 @@ ARIA スナップショットと Tab 順はボタンで表示したときだけ�
 
 ```ts
 // リクエスト
-{ query: string; k?: number /* 最大 20 */; source?: Source }
+{ query: string; k?: number /* 1〜20 */; source?: Source /* 許可リスト外は 400 */ }
 // レスポンス
 { results: SearchResult[]; count: number }
 ```
@@ -412,10 +415,11 @@ curl -s https://spec-bridge.vercel.app/api/spec-search \
 
 ### `POST /api/ingest`
 
-Layer 2 にドキュメントを追加します。
+Layer 2 にドキュメントを追加します。`x-ingest-token` か `x-invite-code` が必要です（無い場合は 403）。
 
 - `multipart/form-data`: `file` に PDF / TXT / MD（PDF は `pdf-parse` で抽出）。600 字・60 字重複で分割
-- `application/json`: `{ text, title?, source?: "CUSTOM" | "CURATED" }`
+- `application/json`: `{ text, title?, source?: "CUSTOM" | "CURATED" }`（`CURATED` は管理者トークンのみ）
+- 上限: ファイル 5MB、本文 200,000 字（超えると 413）
 
 レスポンスは `{ chunks, title, filename? , source? }`。
 
@@ -483,11 +487,12 @@ Layer 2 にドキュメントを追加します。
 | `UPSTASH_REDIS_REST_TOKEN` | 任意 | 同上 |
 | `RATE_LIMIT_PUBLIC` | 任意 | 招待なしの日次上限（既定 30） |
 | `RATE_LIMIT_INVITED` | 任意 | 招待ありの日次上限（既定 30） |
-| `INVITE_CODES` | 任意 | 招待コード（カンマ区切り） |
+| `INVITE_CODES` | 任意 | 招待コード（カンマ区切り）。画面からのガイド追加にも必要 |
+| `INGEST_TOKEN` | 任意 | `/api/ingest` を管理者・スクリプトから呼ぶためのトークン（`x-ingest-token` ヘッダー） |
 
 Embedding は質問ごとに必ず `OPENAI_API_KEY` で呼ばれます。利用者が Gemini と自分の Google キーを選んでも、検索のための Embedding はサーバーの OpenAI キーを使います。
 
-`.env.local.example` には上の 4 つ（OpenAI / Google / Upstash Vector）だけが載っています。Redis と招待コードを使う場合は追記してください。
+`.env.local.example` に全項目を載せています。
 
 ---
 
@@ -551,6 +556,8 @@ npm test   # vitest run
 | `verdict.test.ts` | 判定行のパース |
 | `aiExport.test.ts` | エクスポートの抽出と生成 |
 | `helpers.test.ts` | モデル ID 正規化・グラウンディング・インポート検証 |
+| `sources.test.ts` | ソースの許可リスト・フィルタ注入の拒否 |
+| `ingestAuth.test.ts` | トークン・招待コードによる書き込み許可 |
 
 DOM を使うテストは happy-dom 上で動きます。API ルートと LLM 呼び出しにはテストがありません。
 
@@ -565,18 +572,31 @@ DOM を使うテストは happy-dom 上で動きます。API ルートと LLM �
 
 ---
 
+## セキュリティ
+
+| 対象 | 対策 |
+|---|---|
+| `/api/ingest`（共有 DB への書き込み） | `x-ingest-token`（環境変数 `INGEST_TOKEN` と一致）か、有効な `x-invite-code` が無ければ 403。`CURATED` 層への書き込みは管理者トークンのみ。ファイル 5MB・本文 20 万字まで（413）。トークン比較は `crypto.timingSafeEqual` |
+| ベクトル検索のフィルタ | `source` / `filterSource` は `src/lib/sources.ts` の許可リストと完全一致した値だけを通し、不正値は 400。`buildSourceFilter()` も許可リストを再確認してから式を組み立てる（二重の防御） |
+| `k`（取得件数） | 1〜20 の整数に丸める |
+| HTML プレビュー | [サンドボックス](#html-プレビューのサンドボックス)を参照 |
+| 利用者の API キー | ヘッダーで送り、サーバーに保存しない |
+
+`INGEST_TOKEN` と `INVITE_CODES` がどちらも未設定の場合、`/api/ingest` は常に拒否します。
+
+---
+
 ## 既知の制約と注意点
 
 コードを読んで確認した、運用上気を付ける点です。
 
+> 2026-11-27: `/api/ingest` の無認証と、`source` パラメータのフィルタ注入は修正済みです（[セキュリティ](#セキュリティ)を参照）。
+
 | 項目 | 内容 | 影響 |
 |---|---|---|
-| `/api/ingest` に認証が無い | 誰でもベクトル DB に文書を書き込めます。レート制限もかかりません | 公開環境では本番インデックスの汚染と Embedding 費用の発生につながります。招待コードかサーバー側のトークンで保護することを推奨します |
-| `filter` の文字列連結 | `search()` は `` `source = '${filterSource}'` `` で組み立てます。`/api/spec-search` は `source` を検証していません | 想定外のフィルタ式を渡せます。`Source` 型の値に限定する検証を推奨します |
 | 再クロール時の ID | `crawl.ts` の ID は `${source}-${idx}-${Date.now()}` です | `seed.ts` は同じ jsonl に対しては冪等ですが、クロールし直すと別 ID になり、古いベクトルが残って重複します。作り直すときはインデックスを空にしてから投入してください |
 | ロックファイルが 2 つ | `package-lock.json` と `pnpm-lock.yaml` があり、`package-lock.json` には `happy-dom` が入っていません | `npm ci` が失敗します（`npm install` は通ります）。どちらか一方に揃えることを推奨します |
 | 検索スニペットは 300 字 | メタデータの `text` は本文先頭 300 字です | 800 字チャンクの後半は Embedding には効きますが、LLM には渡りません |
-| メタデータの URL | `layout.tsx` の `metadataBase` と OGP の `url` は `a11y-spec-bridge.vercel.app` です | 本番 URL（`spec-bridge.vercel.app`）と異なります |
 | ARIA スナップショット | 暗黙ロールと accessible name の簡易再現です | 実際のスクリーンリーダーの読み上げとは一致しない場合があります |
 | Forced カラー | CSS で擬似的に再現しています | 実際の Windows ハイコントラストとは一致しません |
 
