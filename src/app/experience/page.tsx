@@ -234,8 +234,8 @@ export default function ExperiencePage() {
                 <Toggle label={TEXT.caption} value={showCaption} onChange={setShowCaption} />
               </div>
             </div>
-            {(showCaption || !speech.supported) && (
-              <div className={styles.caption} aria-live="off">{speech.lastText || (speech.supported ? "" : TEXT.noSpeech)}</div>
+            {(showCaption || speech.supported === false) && (
+              <div className={styles.caption} aria-live="off">{speech.lastText || (speech.supported === false ? TEXT.noSpeech : "")}</div>
             )}
             <div className={styles.pad}>
               <PadButton label={TEXT.keyPrev} keyCap="↑" onPress={() => move(-1)} />
@@ -255,7 +255,7 @@ export default function ExperiencePage() {
 function Menu({ onStart, results, speechSupported }: {
   onStart: (v: Version) => void;
   results: Partial<Record<Version, Result>>;
-  speechSupported: boolean;
+  speechSupported: boolean | null;
 }) {
   return (
     <section className={styles.menu}>
@@ -294,7 +294,7 @@ function Menu({ onStart, results, speechSupported }: {
           );
         })}
       </div>
-      {!speechSupported && <p className={styles.note}>{TEXT.noSpeech}</p>}
+      {speechSupported === false && <p className={styles.note}>{TEXT.noSpeech}</p>}
     </section>
   );
 }
