@@ -5,7 +5,7 @@
 //   2. x-invite-code が有効な招待コード（画面からのアップロード用）
 // どちらも無い場合は 403 を返す。INGEST_TOKEN も INVITE_CODES も未設定なら、書き込みは常に拒否される
 
-import { timingSafeEqual } from "crypto";
+import { safeEqual } from "./safeEqual";
 
 export type IngestAuthInput = {
   ingestToken: string | null;
@@ -20,18 +20,6 @@ export type IngestAuthEnv = {
 export type IngestAuthResult =
   | { allowed: true; by: "token" | "invite" }
   | { allowed: false };
-
-// 長さが違う場合も比較時間から一致状況を推測されないよう、固定長に揃えてから比べる
-function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  const len = Math.max(ab.length, bb.length, 1);
-  const pa = Buffer.alloc(len);
-  const pb = Buffer.alloc(len);
-  ab.copy(pa);
-  bb.copy(pb);
-  return timingSafeEqual(pa, pb) && ab.length === bb.length;
-}
 
 export function authorizeIngest(input: IngestAuthInput, env: IngestAuthEnv): IngestAuthResult {
   const token = env.INGEST_TOKEN?.trim();

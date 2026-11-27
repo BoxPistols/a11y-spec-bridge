@@ -14,3 +14,10 @@ describe("isAuthorizedCron", () => {
     expect(isAuthorizedCron("s3cret", "s3cret")).toBe(false);
   });
 });
+
+describe("isAuthorizedCron（長さ違い）", () => {
+  it("前方一致や長さ違いは拒否する", () => {
+    expect(isAuthorizedCron("Bearer s3cre", "s3cret")).toBe(false);
+    expect(isAuthorizedCron("Bearer s3cretX", "s3cret")).toBe(false);
+  });
+});
