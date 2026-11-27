@@ -9,15 +9,15 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SpecBridge — Design × Spec Q&A",
-  description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
+  title: "SpecBridge — デザイナーとエンジニアのための a11y 判断",
+  description: "アクセシビリティの担当者がいない現場のデザイナーとフロントエンドエンジニア向け。WCAG 2.2・WAI-ARIA・MDN の仕様を根拠に OK / NG と理由を返し、受け入れ基準や Claude Code のルールにしてチームに配れる",
   metadataBase: new URL("https://spec-bridge.vercel.app"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "SpecBridge — Design × Spec Q&A",
-    description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
+    title: "SpecBridge — デザイナーとエンジニアのための a11y 判断",
+    description: "アクセシビリティの担当者がいない現場のデザイナーとフロントエンドエンジニア向け。WCAG 2.2・WAI-ARIA・MDN の仕様を根拠に OK / NG と理由を返し、受け入れ基準や Claude Code のルールにしてチームに配れる",
     url: "https://spec-bridge.vercel.app",
     siteName: "SpecBridge",
     locale: "ja_JP",
@@ -27,14 +27,14 @@ export const metadata: Metadata = {
         url: "/og-image.svg",
         width: 1200,
         height: 630,
-        alt: "SpecBridge — Design × Spec Q&A",
+        alt: "SpecBridge — デザイナーとエンジニアのための a11y 判断",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SpecBridge — Design × Spec Q&A",
-    description: "WCAG / WAI-ARIA / MDN 仕様に基づいてデザイン判断を支援する RAG ツール",
+    title: "SpecBridge — デザイナーとエンジニアのための a11y 判断",
+    description: "アクセシビリティの担当者がいない現場のデザイナーとフロントエンドエンジニア向け。WCAG 2.2・WAI-ARIA・MDN の仕様を根拠に OK / NG と理由を返し、受け入れ基準や Claude Code のルールにしてチームに配れる",
     images: ["/og-image.svg"],
   },
   icons: {
