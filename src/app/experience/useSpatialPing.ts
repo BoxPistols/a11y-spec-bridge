@@ -51,5 +51,25 @@ export function useSpatialPing() {
     osc.stop(now + 0.55);
   }, [ensure]);
 
-  return { ping, ensure };
+  // ピザが届いたときの短いファンファーレ（ド・ミ・ソ・ド）
+  const jingle = useCallback(() => {
+    const ctx = ensure();
+    if (!ctx) return;
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((f, i) => {
+      const t = ctx.currentTime + i * 0.12;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(f, t);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + (i === notes.length - 1 ? 0.6 : 0.2));
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.7);
+    });
+  }, [ensure]);
+
+  return { ping, ensure, jingle };
 }

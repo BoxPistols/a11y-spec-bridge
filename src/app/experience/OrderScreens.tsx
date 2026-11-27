@@ -23,6 +23,20 @@ const PIZZA_ALT = "マルゲリータ。トマトソースにモッツァレラ�
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
+// 画面上の実物の名前。結果画面で「きこえたこと」と並べて「ほんとうは」として見せる（対応前・対応後で共通）
+export const SEEN = {
+  title: "見出し「ピザを注文」",
+  image: "ピザの写真",
+  name: "名前「マルゲリータ」",
+  size: (s: PizzaSize) => `${s}サイズの ボタン`,
+  minus: "ー（へらす）ボタン",
+  qty: "まい数",
+  plus: "＋（ふやす）ボタン",
+  total: "ねだん",
+  order: "カート（ちゅうもん）ボタン",
+  error: "まちがいの しるし",
+} as const;
+
 function MinusIcon() {
   return <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>;
 }
@@ -45,16 +59,17 @@ export function OrderBefore({ size, qty, error, onSize, onQty, onOrder }: OrderS
   const total = size ? UNIT_PRICE[size] * qty : 0;
   return (
     <div className={styles.shop}>
-      <div className={styles.shopTitle}>ピザを注文</div>
+      <div className={styles.shopTitle} data-see={SEEN.title}>ピザを注文</div>
       {/* eslint-disable-next-line @next/next/no-img-element -- alt なしが対応前の意図 */}
-      <img className={styles.shopImage} src={PIZZA_SRC} width={160} height={160} />
-      <div className={styles.shopName}>マルゲリータ</div>
+      <img className={styles.shopImage} src={PIZZA_SRC} width={160} height={160} data-see={SEEN.image} />
+      <div className={styles.shopName} data-see={SEEN.name}>マルゲリータ</div>
       <div className={styles.shopRow}>
         {SIZES.map(s => (
           <div
             key={s}
             className={styles.sizeChip}
             data-selected={size === s}
+            data-see={SEEN.size(s)}
             onClick={() => onSize(s)}
           >
             {s}
@@ -62,12 +77,12 @@ export function OrderBefore({ size, qty, error, onSize, onQty, onOrder }: OrderS
         ))}
       </div>
       <div className={styles.shopRow}>
-        <button type="button" className={styles.qtyBtn} onClick={() => onQty(-1)}><MinusIcon /></button>
-        <div className={styles.qtyValue}>{qty}</div>
-        <button type="button" className={styles.qtyBtn} onClick={() => onQty(1)}><PlusIcon /></button>
+        <button type="button" className={styles.qtyBtn} data-see={SEEN.minus} onClick={() => onQty(-1)}><MinusIcon /></button>
+        <div className={styles.qtyValue} data-see={SEEN.qty}>{qty}</div>
+        <button type="button" className={styles.qtyBtn} data-see={SEEN.plus} onClick={() => onQty(1)}><PlusIcon /></button>
       </div>
-      <div className={styles.total}>{yen(total)}</div>
-      <button type="button" className={styles.orderBtn} data-error={!!error} onClick={onOrder}><CartIcon /></button>
+      <div className={styles.total} data-see={SEEN.total}>{yen(total)}</div>
+      <button type="button" className={styles.orderBtn} data-error={!!error} data-see={SEEN.order} onClick={onOrder}><CartIcon /></button>
       {/* 色だけのエラー表示。読み上げ領域ではないので支援技術には届かない */}
       <div className={styles.errorDot} data-show={!!error} />
     </div>
@@ -79,14 +94,14 @@ export function OrderAfter({ size, qty, error, onSize, onQty, onOrder }: OrderSc
   const total = size ? UNIT_PRICE[size] * qty : 0;
   return (
     <div className={styles.shop}>
-      <h1 className={styles.shopTitle}>ピザを注文</h1>
+      <h1 className={styles.shopTitle} data-see={SEEN.title}>ピザを注文</h1>
       {/* eslint-disable-next-line @next/next/no-img-element -- 静的な小さい画像のため next/image は使わない */}
-      <img className={styles.shopImage} src={PIZZA_SRC} width={160} height={160} alt={PIZZA_ALT} />
+      <img className={styles.shopImage} src={PIZZA_SRC} width={160} height={160} alt={PIZZA_ALT} data-see={SEEN.image} />
       <div className={styles.shopName} aria-hidden="true">マルゲリータ</div>
       <fieldset className={styles.shopRow}>
         <legend className={styles.srOnly}>サイズ</legend>
         {SIZES.map(s => (
-          <label key={s} className={styles.sizeChip} data-selected={size === s}>
+          <label key={s} className={styles.sizeChip} data-selected={size === s} data-see={SEEN.size(s)}>
             <input
               type="radio"
               name="size"
@@ -101,21 +116,22 @@ export function OrderAfter({ size, qty, error, onSize, onQty, onOrder }: OrderSc
         ))}
       </fieldset>
       <div className={styles.shopRow}>
-        <button type="button" className={styles.qtyBtn} aria-label="1枚減らす" onClick={() => onQty(-1)}><MinusIcon /></button>
-        <output className={styles.qtyValue} aria-live="polite" aria-label={`${qty}枚`}>{qty}</output>
-        <button type="button" className={styles.qtyBtn} aria-label="1枚増やす" onClick={() => onQty(1)}><PlusIcon /></button>
+        <button type="button" className={styles.qtyBtn} aria-label="1枚減らす" data-see={SEEN.minus} onClick={() => onQty(-1)}><MinusIcon /></button>
+        <output className={styles.qtyValue} aria-live="polite" aria-label={`${qty}枚`} data-see={SEEN.qty}>{qty}</output>
+        <button type="button" className={styles.qtyBtn} aria-label="1枚増やす" data-see={SEEN.plus} onClick={() => onQty(1)}><PlusIcon /></button>
       </div>
-      <div className={styles.total} aria-hidden="true">{yen(total)}</div>
+      <div className={styles.total} aria-hidden="true" data-see={SEEN.total}>{yen(total)}</div>
       <button
         type="button"
         className={styles.orderBtn}
         data-error={!!error}
+        data-see={SEEN.order}
         aria-label={size ? `${size}サイズ ${qty}枚を注文する 合計${yen(total)}` : `注文する サイズが未選択です`}
         onClick={onOrder}
       >
         <CartIcon />
       </button>
-      <div className={styles.errorDot} data-show={!!error} role="alert">
+      <div className={styles.errorDot} data-show={!!error} role="alert" data-see={SEEN.error}>
         {error && <span className={styles.srOnly}>{error}</span>}
       </div>
     </div>
